@@ -1,0 +1,40 @@
+{
+  "name": "Cleanuparr",
+  "version": "0.1.0",
+  "slug": "cleanuparr",
+  "description": "Home Assistant Addon for Cleanuparr (v2.0.0+) - a service with Web UI to clean up leftover files from Sonarr, Radarr, and Lidarr.",
+  "url": "https://github.com/mindogo1/personal_hass_addons",
+  "arch": [
+    "amd64",
+    "aarch64",
+    "armv7"
+  ],
+  "init": false,
+  "options": {
+    "log_level": "Information",
+    "dry_run": true,
+    "paths_to_cleanup": []
+  },
+  "schema": {
+    "log_level": "list(Trace|Debug|Information|Warning|Error|Critical|None)",
+    "dry_run": "bool",
+    "paths_to_cleanup": ["str"]
+  },
+  "map": [
+    "config:rw",
+    "share:rw",
+    "media:rw"
+  ],
+  "ports": {
+    "11011/tcp": null
+  },
+  "webui": "http://[HOST]:[PORT:11011]",
+  "ingress": true,
+  "panel_icon": "mdi:broom",
+  "panel_title": "Cleanuparr",
+  "startup": "application",  
+  "build_config": {
+    "squash": true
+  },
+  "image": "ghcr.io/mindogo1/cleanuparr-{arch}"
+}

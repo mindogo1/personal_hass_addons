@@ -1,0 +1,70 @@
+name: Build All Home Assistant Addons
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Run daily to check for upstream updates
+  push:
+    branches:
+      - main # Trigger on pushes to your main branch
+    paths:
+      - '**' # Trigger if any file in the repo changes (can be more specific if needed)
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Get a list of all addon directories
+      - name: Get addon list
+        id: addon_list
+        run: |
+          ADDONS=$(find . -maxdepth 2 -type f -name "addon.json" -printf '%h\n' | sed 's|./||')
+          echo "Found addons: $ADDONS"
+          echo "addons=${ADDONS}" >> $GITHUB_OUTPUT
+
+      - name: Build and push all addons
+        env:
+          ADDON_DIRS: ${{ steps.addon_list.outputs.addons }}
+        run: |
+          for addon_dir in $ADDON_DIRS; do
+            ADDON_SLUG=$(jq -r '.slug' "$addon_dir/addon.json")
+            if [ -z "$ADDON_SLUG" ]; then
+              echo "Error: Could not determine slug for addon in $addon_dir. Skipping."
+              continue
+            fi
+            echo "--- Building addon: $ADDON_SLUG from $addon_dir ---"
+
+            # Build and push for each architecture
+            for arch in amd64 aarch64 armv7; do
+              case "$arch" in
+                amd64) PLATFORM="linux/amd64";;
+                aarch64) PLATFORM="linux/arm64";;
+                armv7) PLATFORM="linux/arm/v7";;
+                *) echo "Unknown architecture: $arch"; continue;;
+              esac
+
+              echo "Building for $arch (platform: $PLATFORM)"
+              docker buildx build \
+                --context "./$addon_dir" \
+                --file "./$addon_dir/Dockerfile" \
+                --platform "$PLATFORM" \
+                --push \
+                --tag "ghcr.io/${{ github.repository_owner }}/${ADDON_SLUG}-${arch}:latest" \
+                --tag "ghcr.io/${{ github.repository_owner }}/${ADDON_SLUG}-${arch}:$(jq -r '.version' "$addon_dir/addon.json")" \
+                --build-arg BUILD_FROM="ghcr.io/home-assistant/${arch}-base:latest" \
+                . # The build context is the current directory (repo root)
+              echo "Pushed ghcr.io/${{ github.repository_owner }}/${ADDON_SLUG}-${arch}:latest"
+            done
+          done
