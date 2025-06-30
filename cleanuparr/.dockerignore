@@ -1,0 +1,31 @@
+# Ignore version control directories
+.git
+.gitignore
+
+# Ignore Python specific files and directories (Cleanuparr is .NET, but good general ignore)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+env/
+venv/
+.pytest_cache/
+.coverage
+
+# Ignore .NET build artifacts if you were building locally
+bin/
+obj/
+
+# Ignore build artifacts
+dist/
+build/
+*.egg-info/
+
+# Ignore local development files
+.env
+.idea/
+.vscode/
+data/ # If used for local persistent data, exclude it from the image
+logs/
+*.log

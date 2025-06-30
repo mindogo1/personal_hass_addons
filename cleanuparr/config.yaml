@@ -1,26 +1,34 @@
-{
-  "name": "Cleanuparr",
-  "version": "1.0.0",
-  "slug": "cleanuparr",
-  "description": "Clean Sonarr/Radarr media with Web UI (based on Cleanuparr).",
-  "url": "https://github.com/Cleanuparr/Cleanuparr",
-  "startup": "services",
-  "boot": "auto",
-  "ingress": true,
-  "ingress_port": 11011,
-  "panel_icon": "mdi:delete-sweep",
-  "panel_title": "Cleanuparr",
-  "arch": ["amd64", "aarch64"],
-  "image": "ghcr.io/cleanuparr/cleanuparr:latest",
-  "init": false,
-  "map": ["config:rw"],
-  "environment": {
-    "PORT": "11011",
-    "TZ": "Etc/UTC",
-    "PUID": "1000",
-    "PGID": "1000"
-  },
-  "ports": {
-    "11011/tcp": null
-  }
-}
+name: "Cleanuparr"
+description: "Home Assistant Addon for Cleanuparr (v2.0.0+) - a service with Web UI to clean up leftover files from Sonarr, Radarr, and Lidarr."
+version: "0.1.0"
+slug: "cleanuparr"
+url: "https://github.com/mindogo1/personal_hass_addons"
+arch:
+  - amd64
+  - aarch64
+init: false
+options:
+  log_level: "Information"
+  dry_run: true
+  paths_to_cleanup: []
+schema:
+  log_level: "list(Trace|Debug|Information|Warning|Error|Critical|None)"
+  dry_run: "bool"
+  paths_to_cleanup: ["str"]
+map:
+  - type: config
+    read_only: false
+  - type: share
+    read_only: false
+  - type: media
+    read_only: false
+ports:
+  11011/tcp: null
+webui: "http://[HOST]:[PORT:11011]"
+ingress: true
+panel_icon: "mdi:broom"
+panel_title: "Cleanuparr"
+startup: "application"
+build_config:
+  squash: true
+image: "ghcr.io/mindogo1/cleanuparr-{arch}"

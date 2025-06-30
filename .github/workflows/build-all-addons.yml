@@ -10,7 +10,7 @@ on:
       - '**' # Trigger if any file in the repo changes
 
 jobs:
-  # Job 1: Find all addon directories
+  # Job 1: Find all addon directories in the repository
   find_addons:
     runs-on: ubuntu-latest
     outputs:
@@ -22,7 +22,7 @@ jobs:
       - name: Get addon list
         id: addon_list
         run: |
-          ADDONS=$(find . -maxdepth 2 -type f -name "addon.json" -printf '%h\n' | sed 's|./||' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          ADDONS=$(find . -maxdepth 2 -type f -name "config.yaml" -printf '%h\n' | sed 's|./||' | jq -R -s -c 'split("\n") | map(select(length > 0))')
           echo "Found addon directories: $ADDONS"
           echo "addons=${ADDONS}" >> "$GITHUB_OUTPUT"
 
@@ -30,21 +30,19 @@ jobs:
   build_and_push:
     needs: find_addons
     runs-on: ubuntu-latest
-    permissions:
+    permissions: # CRUCIAL: Grant necessary permissions for GHCR push
       contents: read
       packages: write
     strategy:
       fail-fast: false
       matrix:
         addon_dir: ${{ fromJson(needs.find_addons.outputs.addons) }}
-        # REMOVED "armv7" from the list below
-        arch: [amd64, aarch64]
+        arch: [amd64, aarch64] # Removed armv7 as base image doesn't support it
         include:
           - arch: amd64
             platform: linux/amd64
           - arch: aarch64
             platform: linux/arm64
-          # REMOVED the armv7 include block
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -59,11 +57,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Read addon.json for ${{ matrix.addon_dir }}
+      - name: Read addon config.yaml for ${{ matrix.addon_dir }}
         id: addon_info
         run: |
-          ADDON_SLUG=$(jq -r '.slug' "${{ matrix.addon_dir }}/addon.json")
-          ADDON_VERSION=$(jq -r '.version' "${{ matrix.addon_dir }}/addon.json")
+          # Read slug and version from config.yaml now
+          ADDON_SLUG=$(yq e '.slug' "${{ matrix.addon_dir }}/config.yaml")
+          ADDON_VERSION=$(yq e '.version' "${{ matrix.addon_dir }}/config.yaml")
           echo "addon_slug=$ADDON_SLUG" >> "$GITHUB_OUTPUT"
           echo "addon_version=$ADDON_VERSION" >> "$GITHUB_OUTPUT"
 
