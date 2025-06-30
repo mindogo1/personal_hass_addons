@@ -10,11 +10,10 @@ on:
       - '**' # Trigger if any file in the repo changes
 
 jobs:
-  # Job 1: Find all addon directories in the repository
+  # Job 1: Find all addon directories
   find_addons:
     runs-on: ubuntu-latest
     outputs:
-      # Output the list of addon directories as a JSON array
       addons: ${{ steps.addon_list.outputs.addons }}
     steps:
       - name: Checkout repository
@@ -23,35 +22,29 @@ jobs:
       - name: Get addon list
         id: addon_list
         run: |
-          # Find all directories containing an JSON, convert to a JSON array for the matrix
-          # jq -R -s -c 'split("\n") | map(select(length > 0))' converts multiline output to a JSON array
           ADDONS=$(find . -maxdepth 2 -type f -name "addon.json" -printf '%h\n' | sed 's|./||' | jq -R -s -c 'split("\n") | map(select(length > 0))')
           echo "Found addon directories: $ADDONS"
-          # Set the output for the next job to consume
-          echo "addons=${ADDONS}" >> "$GITHUB_OUTPUT" # Use "$GITHUB_OUTPUT" for GitHub Actions v2+
+          echo "addons=${ADDONS}" >> "$GITHUB_OUTPUT"
 
   # Job 2: Build and push each addon for each architecture using a matrix
   build_and_push:
-    needs: find_addons # This job depends on the 'find_addons' job completing successfully
+    needs: find_addons
     runs-on: ubuntu-latest
-    permissions: # <--- CRUCIAL: Grant necessary permissions for GHCR push
-      contents: read   # Allows reading repository contents
-      packages: write  # Allows pushing (writing) to GitHub Container Registry packages
+    permissions:
+      contents: read
+      packages: write
     strategy:
-      fail-fast: false # Set to 'true' if you want all builds to cancel if one fails
+      fail-fast: false
       matrix:
-        # Iterate over each addon directory found by the 'find_addons' job
         addon_dir: ${{ fromJson(needs.find_addons.outputs.addons) }}
-        # Iterate over each target architecture
-        arch: [amd64, aarch64, armv7]
-        # Define platform mappings for docker buildx
+        # REMOVED "armv7" from the list below
+        arch: [amd64, aarch64]
         include:
           - arch: amd64
             platform: linux/amd64
           - arch: aarch64
             platform: linux/arm64
-          - arch: armv7
-            platform: linux/arm/v7
+          # REMOVED the armv7 include block
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -69,26 +62,19 @@ jobs:
       - name: Read addon.json for ${{ matrix.addon_dir }}
         id: addon_info
         run: |
-          # Extract addon slug and version from addon.json for dynamic tagging
           ADDON_SLUG=$(jq -r '.slug' "${{ matrix.addon_dir }}/addon.json")
           ADDON_VERSION=$(jq -r '.version' "${{ matrix.addon_dir }}/addon.json")
-          echo "addon_slug=$ADDON_SLUG" >> "$GITHUB_OUTPUT" # Use "$GITHUB_OUTPUT"
-          echo "addon_version=$ADDON_VERSION" >> "$GITHUB_OUTPUT" # Use "$GITHUB_OUTPUT"
+          echo "addon_slug=$ADDON_SLUG" >> "$GITHUB_OUTPUT"
+          echo "addon_version=$ADDON_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Build and push ${{ matrix.addon_dir }} for ${{ matrix.arch }}
         uses: docker/build-push-action@v5
         with:
-          # The build context is the specific addon directory (e.g., ./cleanuparr)
           context: "./${{ matrix.addon_dir }}"
-          # The Dockerfile is located inside that addon directory
           file: "./${{ matrix.addon_dir }}/Dockerfile"
-          # Specify the target platform from the matrix
           platforms: ${{ matrix.platform }}
-          # Push the image to the registry
           push: true
-          # Define the image tags (latest and version-specific)
           tags: |
             ghcr.io/${{ github.repository_owner }}/${{ steps.addon_info.outputs.addon_slug }}-${{ matrix.arch }}:latest
             ghcr.io/${{ github.repository_owner }}/${{ steps.addon_info.outputs.addon_slug }}-${{ matrix.arch }}:${{ steps.addon_info.outputs.addon_version }}
-          # Pass the correct Home Assistant base image as a build argument to your Dockerfile
           build-args: BUILD_FROM=ghcr.io/home-assistant/${{ matrix.arch }}-base:latest
