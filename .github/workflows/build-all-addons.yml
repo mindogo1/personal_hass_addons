@@ -2,16 +2,52 @@ name: Build All Home Assistant Addons
 
 on:
   schedule:
-    - cron: '0 0 * * *' # Run daily to check for upstream updates
+    - cron: '0 0 * * *' # Run daily at midnight UTC to check for Cleanuparr updates
   push:
     branches:
       - main # Trigger on pushes to your main branch
     paths:
-      - '**' # Trigger if any file in the repo changes (can be more specific if needed)
+      - '**' # Trigger if any file in the repo changes
 
 jobs:
-  build:
+  # Job 1: Find all addon directories in the repository
+  find_addons:
     runs-on: ubuntu-latest
+    outputs:
+      # Output the list of addon directories as a JSON array
+      addons: ${{ steps.addon_list.outputs.addons }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get addon list
+        id: addon_list
+        run: |
+          # Find all directories containing an addon.json, convert to a JSON array for the matrix
+          ADDONS=$(find . -maxdepth 2 -type f -name "addon.json" -printf '%h\n' | sed 's|./||' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "Found addon directories: $ADDONS"
+          # Set the output for the next job to consume
+          echo "addons=${ADDONS}" >> $GITHUB_OUTPUT
+
+  # Job 2: Build and push each addon for each architecture
+  build_and_push:
+    needs: find_addons # This job depends on the 'find_addons' job completing successfully
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # Set to 'true' if you want all builds to cancel if one fails
+      matrix:
+        # Iterate over each addon directory found by the 'find_addons' job
+        addon_dir: ${{ fromJson(needs.find_addons.outputs.addons) }}
+        # Iterate over each target architecture
+        arch: [amd64, aarch64, armv7]
+        # Define platform mappings for docker buildx
+        include:
+          - arch: amd64
+            platform: linux/amd64
+          - arch: aarch64
+            platform: linux/arm64
+          - arch: armv7
+            platform: linux/arm/v7
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -26,45 +62,29 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Get a list of all addon directories
-      - name: Get addon list
-        id: addon_list
+      - name: Read addon.json for ${{ matrix.addon_dir }}
+        id: addon_info
         run: |
-          ADDONS=$(find . -maxdepth 2 -type f -name "addon.json" -printf '%h\n' | sed 's|./||')
-          echo "Found addons: $ADDONS"
-          echo "addons=${ADDONS}" >> $GITHUB_OUTPUT
+          # Extract addon slug and version from addon.json for dynamic tagging
+          ADDON_SLUG=$(jq -r '.slug' "${{ matrix.addon_dir }}/addon.json")
+          ADDON_VERSION=$(jq -r '.version' "${{ matrix.addon_dir }}/addon.json")
+          echo "addon_slug=$ADDON_SLUG" >> $GITHUB_OUTPUT
+          echo "addon_version=$ADDON_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Build and push all addons
-        env:
-          ADDON_DIRS: ${{ steps.addon_list.outputs.addons }}
-        run: |
-          for addon_dir in $ADDON_DIRS; do
-            ADDON_SLUG=$(jq -r '.slug' "$addon_dir/addon.json")
-            if [ -z "$ADDON_SLUG" ]; then
-              echo "Error: Could not determine slug for addon in $addon_dir. Skipping."
-              continue
-            fi
-            echo "--- Building addon: $ADDON_SLUG from $addon_dir ---"
-
-            # Build and push for each architecture
-            for arch in amd64 aarch64 armv7; do
-              case "$arch" in
-                amd64) PLATFORM="linux/amd64";;
-                aarch64) PLATFORM="linux/arm64";;
-                armv7) PLATFORM="linux/arm/v7";;
-                *) echo "Unknown architecture: $arch"; continue;;
-              esac
-
-              echo "Building for $arch (platform: $PLATFORM)"
-              docker buildx build \
-                --context "./$addon_dir" \
-                --file "./$addon_dir/Dockerfile" \
-                --platform "$PLATFORM" \
-                --push \
-                --tag "ghcr.io/${{ github.repository_owner }}/${ADDON_SLUG}-${arch}:latest" \
-                --tag "ghcr.io/${{ github.repository_owner }}/${ADDON_SLUG}-${arch}:$(jq -r '.version' "$addon_dir/addon.json")" \
-                --build-arg BUILD_FROM="ghcr.io/home-assistant/${arch}-base:latest" \
-                . # The build context is the current directory (repo root)
-              echo "Pushed ghcr.io/${{ github.repository_owner }}/${ADDON_SLUG}-${arch}:latest"
-            done
-          done
+      - name: Build and push ${{ matrix.addon_dir }} for ${{ matrix.arch }}
+        uses: docker/build-push-action@v5
+        with:
+          # The build context is the specific addon directory (e.g., ./cleanuparr)
+          context: "./${{ matrix.addon_dir }}"
+          # The Dockerfile is located inside that addon directory
+          file: "./${{ matrix.addon_dir }}/Dockerfile"
+          # Specify the target platform from the matrix
+          platforms: ${{ matrix.platform }}
+          # Push the image to the registry
+          push: true
+          # Define the image tags (latest and version-specific)
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/${{ steps.addon_info.outputs.addon_slug }}-${{ matrix.arch }}:latest
+            ghcr.io/${{ github.repository_owner }}/${{ steps.addon_info.outputs.addon_slug }}-${{ matrix.arch }}:${{ steps.addon_info.outputs.addon_version }}
+          # Pass the correct Home Assistant base image as a build argument to your Dockerfile
+          build-args: BUILD_FROM=ghcr.io/home-assistant/${{ matrix.arch }}-base:latest
