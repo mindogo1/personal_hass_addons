@@ -1,5 +1,6 @@
 name: "Cleanuparr"
 description: "Home Assistant Addon for Cleanuparr (v2.0.0+) - a service with Web UI to clean up leftover files from Sonarr, Radarr, and Lidarr."
+icon: "logo.png"
 version: "0.1.0"
 slug: "cleanuparr"
 url: "https://github.com/mindogo1/personal_hass_addons"
