@@ -16,6 +16,13 @@ then
     exit 1
 fi
 
+# --- FIX: Ensure /data/options.json is readable by all users ---
+# This is crucial if s6-overlay or the base image drops privileges after run.sh starts.
+log info "Attempting to set read permissions for /data/options.json..."
+chmod a+r /data/options.json || log error "Failed to change permissions for /data/options.json"
+# --- END FIX ---
+
+
 # Load addon configuration from /data/options.json
 LOG_LEVEL=$(jq --raw-output ".log_level // \"Information\"" /data/options.json)
 DRY_RUN=$(jq --raw-output ".dry_run // true" /data/options.json)
