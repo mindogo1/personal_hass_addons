@@ -23,16 +23,20 @@ jobs:
       - name: Get addon list
         id: addon_list
         run: |
-          # Find all directories containing an addon.json, convert to a JSON array for the matrix
+          # Find all directories containing an JSON, convert to a JSON array for the matrix
+          # jq -R -s -c 'split("\n") | map(select(length > 0))' converts multiline output to a JSON array
           ADDONS=$(find . -maxdepth 2 -type f -name "addon.json" -printf '%h\n' | sed 's|./||' | jq -R -s -c 'split("\n") | map(select(length > 0))')
           echo "Found addon directories: $ADDONS"
           # Set the output for the next job to consume
-          echo "addons=${ADDONS}" >> $GITHUB_OUTPUT
+          echo "addons=${ADDONS}" >> "$GITHUB_OUTPUT" # Use "$GITHUB_OUTPUT" for GitHub Actions v2+
 
-  # Job 2: Build and push each addon for each architecture
+  # Job 2: Build and push each addon for each architecture using a matrix
   build_and_push:
     needs: find_addons # This job depends on the 'find_addons' job completing successfully
     runs-on: ubuntu-latest
+    permissions: # <--- CRUCIAL: Grant necessary permissions for GHCR push
+      contents: read   # Allows reading repository contents
+      packages: write  # Allows pushing (writing) to GitHub Container Registry packages
     strategy:
       fail-fast: false # Set to 'true' if you want all builds to cancel if one fails
       matrix:
@@ -68,8 +72,8 @@ jobs:
           # Extract addon slug and version from addon.json for dynamic tagging
           ADDON_SLUG=$(jq -r '.slug' "${{ matrix.addon_dir }}/addon.json")
           ADDON_VERSION=$(jq -r '.version' "${{ matrix.addon_dir }}/addon.json")
-          echo "addon_slug=$ADDON_SLUG" >> $GITHUB_OUTPUT
-          echo "addon_version=$ADDON_VERSION" >> $GITHUB_OUTPUT
+          echo "addon_slug=$ADDON_SLUG" >> "$GITHUB_OUTPUT" # Use "$GITHUB_OUTPUT"
+          echo "addon_version=$ADDON_VERSION" >> "$GITHUB_OUTPUT" # Use "$GITHUB_OUTPUT"
 
       - name: Build and push ${{ matrix.addon_dir }} for ${{ matrix.arch }}
         uses: docker/build-push-action@v5
