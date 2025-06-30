@@ -1,7 +1,7 @@
 {
   "name": "Mindogo1's Personal Home Assistant Addons",
   "url": "https://github.com/mindogo1/personal_hass_addons",
-  "maintainer": "mindogo1 <your.email@example.com>",
+  "maintainer": "mindogo1",
   "addons": [
     {
       "name": "Cleanuparr",

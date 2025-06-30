@@ -31,7 +31,7 @@
   "ingress": true,
   "panel_icon": "mdi:broom",
   "panel_title": "Cleanuparr",
-  "startup": "application",  
+  "startup": "application",
   "build_config": {
     "squash": true
   },
