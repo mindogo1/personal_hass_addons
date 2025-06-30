@@ -10,7 +10,7 @@ on:
       - '**' # Trigger if any file in the repo changes
 
 jobs:
-  # Job 1: Find all addon directories in the repository
+  # Job 1: Find all addon directories
   find_addons:
     runs-on: ubuntu-latest
     outputs:
@@ -60,7 +60,6 @@ jobs:
       - name: Read addon config.yaml for ${{ matrix.addon_dir }}
         id: addon_info
         run: |
-          # Read slug and version from config.yaml now
           ADDON_SLUG=$(yq e '.slug' "${{ matrix.addon_dir }}/config.yaml")
           ADDON_VERSION=$(yq e '.version' "${{ matrix.addon_dir }}/config.yaml")
           echo "addon_slug=$ADDON_SLUG" >> "$GITHUB_OUTPUT"
@@ -76,4 +75,3 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/${{ steps.addon_info.outputs.addon_slug }}-${{ matrix.arch }}:latest
             ghcr.io/${{ github.repository_owner }}/${{ steps.addon_info.outputs.addon_slug }}-${{ matrix.arch }}:${{ steps.addon_info.outputs.addon_version }}
-          build-args: BUILD_FROM=ghcr.io/home-assistant/${{ matrix.arch }}-base:latest
