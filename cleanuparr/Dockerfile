@@ -16,5 +16,9 @@ WORKDIR /app
 COPY run.sh /usr/bin/run.sh
 RUN chmod a+x /usr/bin/run.sh
 
+# --- ADD THIS LINE ---
+USER root
+# --- END ADDITION ---
+
 # Set the entrypoint to your run.sh script.
 CMD ["/usr/bin/run.sh"]
