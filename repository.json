@@ -1,17 +1,16 @@
 {
   "name": "Mindogo1's Personal Home Assistant Addons",
-  "url": "https://github.com/mindogo1/personal_hass_addons",  
+  "url": "https://github.com/mindogo1/personal_hass_addons",
   "maintainer": "mindogo1 <your.email@example.com>",
   "addons": [
     {
       "name": "Cleanuparr",
       "slug": "cleanuparr",
       "description": "Home Assistant Addon for Cleanuparr - a script to clean up leftover files from Sonarr, Radarr, and Lidarr.",
-      "url": "https://github.com/mindogo1/personal_hass_addons/tree/main/cleanuparr",  
-      "repository": "https://github.com/mindogo1/personal_hass_addons",             
+      "url": "https://github.com/mindogo1/personal_hass_addons/tree/main/cleanuparr",
+      "repository": "https://github.com/mindogo1/personal_hass_addons",
       "stage": "stable",
       "versions": ["0.1.0"]
     }
-    // Add more addon entries here as you create them following this structure
   ]
 }
