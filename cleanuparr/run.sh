@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-# Generate the Home Assistant–driven config file
+# 1) Generate the Home Assistant–driven config file
 cat <<EOF > /config/config.yaml
 radarr:
   url: "${RADARR_URL}"
@@ -13,5 +13,6 @@ EOF
 
 echo "Config written to /config/config.yaml"
 
-# Hand off to the real Cleanuparr binary on $PATH
-exec Cleanuparr "$@"
+# 2) Exit so HA’s Supervisor can launch the container normally
+#    (it will invoke the image’s built-in ENTRYPOINT which starts Cleanuparr)
+exit 0
