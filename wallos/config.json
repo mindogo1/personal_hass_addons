@@ -1,0 +1,14 @@
+{
+  "name": "Wallos",
+  "version": "1.0.0",
+  "slug": "wallos",
+  "description": "Self-hosted personal subscription tracker (Wallos)",
+  "url": "https://github.com/ellite/Wallos",
+  "arch": ["amd64", "aarch64"],
+  "startup": "services",
+  "boot": "auto",
+  "image": "bellamy/wallos:latest",
+  "map": ["config:rw"],
+  "ingress": true,
+  "ingress_port": 80
+}
