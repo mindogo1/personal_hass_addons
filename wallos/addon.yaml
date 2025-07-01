@@ -1,0 +1,15 @@
+name: "Wallos"
+version: "1.0.0"
+slug: "wallos"
+description: "Self-hosted personal subscription tracker (Wallos)"
+url: "https://github.com/ellite/Wallos"
+startup: services
+boot: auto
+arch:
+  - amd64
+  - aarch64
+  - armv7
+host_network: true
+map:
+  - config:rw
+init: false
