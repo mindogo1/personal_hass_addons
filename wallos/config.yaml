@@ -13,14 +13,13 @@ arch:
 
 host_network: false
 
-# Expose the built-in Web UI via Ingress
-ingress: true
-ingress_port: 80
-
-# Persist everything under /config
+# Persist any files Wallos writes under /config
 map:
   - config:rw
 
-# Run our init hook to symlink /config into the container,
-# then exit so the image's own ENTRYPOINT starts Wallos.
-init: run.sh
+# Expose the built-in UI via Ingress
+ingress: true
+ingress_port: 80
+
+# No init: false so Supervisor just builds & runs the image
+init: false
