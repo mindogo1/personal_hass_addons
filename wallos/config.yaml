@@ -3,24 +3,16 @@ version: "1.0.0"
 slug: "wallos"
 description: "Self-hosted personal subscription tracker (Wallos)"
 url: "https://github.com/ellite/Wallos"
-
 startup: services
 boot: auto
-
 arch:
   - amd64
   - aarch64
-
-# Persist any data Wallos writes under /config
 map:
   - config:rw
-
-# Expose the built-in Web UI via Ingress on port 80
 ingress: true
 ingress_port: 80
-
-# No init script, Image only
+ports:
+  "80/tcp": 80
 init: false
-
-# Use the official Wallos image
 image: bellamy/wallos:latest
