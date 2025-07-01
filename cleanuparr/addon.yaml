@@ -6,11 +6,16 @@ url: "https://github.com/mindogo1/personal_hass_addons"
 arch:
   - aarch64
 startup: "application"
-boot: "auto"
+boot: "manual"
 host_network: false
 ingress: false
 map:
   - config:rw
+build:
+  context: .
+  dockerfile: Dockerfile
+  args:
+    BUILD_FROM: ghcr.io/cleanuparr/cleanuparr:latest
 options:
   radarr_url:
     description: "Radarr URL"
@@ -33,9 +38,4 @@ schema:
   radarr_api_key: str
   sonarr_url: str
   sonarr_api_key: str
-build:
-  context: .
-  dockerfile: Dockerfile
-  args:
-    BUILD_FROM: ghcr.io/cleanuparr/cleanuparr:latest
 command: "/run.sh"

@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 set -e
-
-# Generate config file
 cat <<EOF > /config/config.yaml
 radarr:
   url: "${RADARR_URL}"
@@ -13,6 +11,4 @@ EOF
 
 echo "Config written to /config/config.yaml"
 
-# Execute Cleanuparr binary
-# Adjust the path below if needed, e.g., /usr/local/bin/Cleanuparr
 exec /cleanuparr "$@"
