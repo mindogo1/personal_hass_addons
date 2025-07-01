@@ -8,14 +8,13 @@
   "startup": "services",
   "boot": "auto",
 
-  "host_network": false,
+  "image": "ghcr.io/cleanuparr:latest",
 
+  "init": "/run.sh",
+
+  "host_network": false,
   "ingress": true,
   "ingress_port": 11011,
 
-  "map": ["config:rw"],
-
-  "image": "ghcr.io/cleanuparr:latest",
-
-  "init": "/run.sh"
+  "map": ["config:rw"]
 }
