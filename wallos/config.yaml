@@ -11,15 +11,20 @@ arch:
   - amd64
   - aarch64
 
-host_network: false
-
 # Persist any files Wallos writes under /config
 map:
   - config:rw
 
-# Expose the built-in UI via Ingress
+# Expose the built-in Web UI via Ingress on container port 80
 ingress: true
 ingress_port: 80
 
-# No init: false so Supervisor just builds & runs the image
+# Tell Supervisor which port to open internally
+ports:
+  "80/tcp": 80
+
+# Don’t override ENTRYPOINT—just build & run the image
 init: false
+
+# Use the official image
+image: bellamy/wallos:latest
