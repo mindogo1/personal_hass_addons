@@ -2,25 +2,21 @@
   "name": "Cleanuparr",
   "version": "1.0.0",
   "slug": "cleanuparr",
-  "description": "Clean Sonarr/Radarr media with Web UI (based on Cleanuparr).",
-  "url": "https://github.com/Cleanuparr/Cleanuparr",
-  "startup": "services",
-  "boot": "auto",
-  "ingress": true,
-  "ingress_port": 11011,
-  "panel_icon": "mdi:delete-sweep",
-  "panel_title": "Cleanuparr",
+  "description": "Cleanup utility for Sonarr/Radarr",
+  "startup": "once",
+  "boot": "manual",
   "arch": ["amd64", "aarch64"],
-  "image": "ghcr.io/cleanuparr/cleanuparr:latest",
-  "init": false,
   "map": ["config:rw"],
-  "environment": {
-    "PORT": "11011",
-    "TZ": "Etc/UTC",
-    "PUID": "1000",
-    "PGID": "1000"
+  "options": {
+    "radarr_url": "http://localhost:7878",
+    "radarr_api_key": "your-radarr-api-key",
+    "sonarr_url": "http://localhost:8989",
+    "sonarr_api_key": "your-sonarr-api-key"
   },
-  "ports": {
-    "11011/tcp": null
+  "schema": {
+    "radarr_url": "str",
+    "radarr_api_key": "str",
+    "sonarr_url": "str",
+    "sonarr_api_key": "str"
   }
 }
