@@ -1,0 +1,25 @@
+name: "Wallos"
+version: "1.0.0"
+slug: "wallos"
+description: "Self-hosted personal subscription tracker (Wallos)"
+url: "https://github.com/ellite/Wallos"
+icon: "logo.png"        # optional if you add a logo.png there
+startup: services
+boot: auto
+
+arch:
+  - amd64
+  - aarch64
+
+host_network: false
+
+# Persist any files Wallos writes under /config
+map:
+  - config:rw
+
+# Expose the built-in UI via Ingress on port 80
+ingress: true
+ingress_port: 80
+
+# Don’t override the upstream ENTRYPOINT
+init: false
