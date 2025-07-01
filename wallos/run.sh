@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -e
 
-# Ensure persistent dirs exist under /config
+# Prepare persistent data dirs on first run
 mkdir -p /config/db /config/logos
 
-# Symlink to the container’s expected locations
+# Symlink into where Wallos expects them
 rm -rf /var/www/html/db
 ln -s /config/db /var/www/html/db
 
@@ -13,5 +13,5 @@ ln -s /config/logos /var/www/html/images/uploads/logos
 
 echo "Wallos data dirs mounted"
 
-# Exit so Supervisor runs the upstream ENTRYPOINT
+# Exit so Supervisor will launch the container’s ENTRYPOINT next
 exit 0
