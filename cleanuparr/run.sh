@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -e
+
+# Generate the Home Assistant–driven config file
 cat <<EOF > /config/config.yaml
 radarr:
   url: "${RADARR_URL}"
@@ -11,4 +13,5 @@ EOF
 
 echo "Config written to /config/config.yaml"
 
-exec /cleanuparr "$@"
+# Hand off to the real Cleanuparr binary on $PATH
+exec Cleanuparr "$@"
