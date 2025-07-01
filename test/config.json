@@ -1,0 +1,12 @@
+{
+  "name": "Test Addon",
+  "version": "1.0.0",
+  "slug": "testaddon",
+  "description": "A minimal test add-on to verify repo",
+  "arch": ["aarch64"],
+  "startup": "application",
+  "boot": "auto",
+  "image": "busybox:latest",
+  "init": "/run.sh",
+  "map": ["config:rw"]
+}
