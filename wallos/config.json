@@ -1,0 +1,24 @@
+{
+  "name": "Wallos",
+  "version": "1.0.0",
+  "slug": "wallos",
+  "description": "Self-hosted personal subscription tracker (Wallos)",
+  "url": "https://github.com/ellite/Wallos",
+  "arch": ["amd64", "aarch64"],
+  "startup": "services",
+  "boot": "auto",
+
+  // Pull the upstream Wallos image from Docker Hub
+  "image": "bellamy/wallos:latest",
+
+  // Persist everything under /config
+  "map": ["config:rw"],
+
+  // Run this init script first (symlinks /config → actual data dirs)
+  "init": "/run.sh",
+
+  // Enable Ingress so HA will show an “Open Web UI” button
+  "ingress": true,
+  "ingress_port": 80
+
+}
