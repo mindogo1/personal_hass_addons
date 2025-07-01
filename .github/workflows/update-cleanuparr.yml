@@ -9,13 +9,13 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout your repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Pull latest upstream image
+      - name: Pull upstream image
         run: |
           docker pull ghcr.io/cleanuparr/cleanuparr:latest
-          echo "Image pulled."
+          echo "Upstream image pulled."
 
       - name: Commit and push if updated
         run: |

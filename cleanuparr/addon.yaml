@@ -4,22 +4,38 @@ slug: "cleanuparr"
 description: "A cleanup utility for Sonarr and Radarr"
 url: "https://github.com/mindogo1/personal_hass_addons"
 arch:
-  - amd64
   - aarch64
-startup: once
-boot: manual
-image: "ghcr.io/cleanuparr/cleanuparr:latest"
-host_network: true
+startup: "application"
+boot: "auto"
+host_network: false
 ingress: false
 map:
   - config:rw
 options:
-  radarr_url: "http://localhost:7878"
-  radarr_api_key: "your-radarr-api-key"
-  sonarr_url: "http://localhost:8989"
-  sonarr_api_key: "your-sonarr-api-key"
+  radarr_url:
+    description: "Radarr URL"
+    type: string
+    default: "http://localhost:7878"
+  radarr_api_key:
+    description: "Radarr API Key"
+    type: string
+    default: ""
+  sonarr_url:
+    description: "Sonarr URL"
+    type: string
+    default: "http://localhost:8989"
+  sonarr_api_key:
+    description: "Sonarr API Key"
+    type: string
+    default: ""
 schema:
   radarr_url: str
   radarr_api_key: str
   sonarr_url: str
   sonarr_api_key: str
+build:
+  context: .
+  dockerfile: Dockerfile
+  args:
+    BUILD_FROM: ghcr.io/cleanuparr/cleanuparr:latest
+command: "/run.sh"
