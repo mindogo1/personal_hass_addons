@@ -1,4 +1,4 @@
-FROM ghcr.io/jordan-dalby/cleanuparr:latest
+FROM ghcr.io/cleanuparr/cleanuparr:latest
 
 COPY run.sh /run.sh
 RUN chmod +x /run.sh

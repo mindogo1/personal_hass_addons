@@ -2,30 +2,34 @@ name: Update Cleanuparr Base Image
 
 on:
   schedule:
-    - cron: '0 3 * * *'  # Check for updates every day at 3 AM UTC
+    - cron: '0 3 * * *'  # Check daily at 3 AM UTC
   workflow_dispatch:
 
 jobs:
   update:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout your repository
         uses: actions/checkout@v4
 
-      - name: Pull latest upstream image and rebuild your addon
+      - name: Pull latest upstream image and test run
         run: |
-          docker pull ghcr.io/jordan-dalby/cleanuparr:latest
-          echo "Image pulled. You can add custom update logic here."
+          echo "Pulling latest Cleanuparr image..."
+          docker pull ghcr.io/cleanuparr/cleanuparr:latest
+          echo "Image pulled successfully"
 
-      # Optional: If you want to trigger version change commit
-      - name: Bump version in addon.yaml (if needed)
+      # Optional: Version bump or other update logic
+      - name: Update addon version or metadata (optional)
         run: |
-          echo "Optionally parse upstream for changes and update addon.yaml"
+          echo "If you want to pin a version or update addon.yaml, do it here"
+          # Example: sed -i 's/version: ".*"/version: "1.0.1"/' cleanuparr/addon.yaml
 
-      - name: Commit and push if updated
+      # Optional: Commit changes if addon.yaml or Dockerfile is updated
+      - name: Commit and push if any changes occurred
         run: |
           git config --global user.name 'github-actions'
           git config --global user.email 'actions@github.com'
           git add -A
-          git diff --cached --quiet || git commit -m "Update cleanuparr base image"
+          git diff --cached --quiet || git commit -m "Update Cleanuparr base image"
           git push
