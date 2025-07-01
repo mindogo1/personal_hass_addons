@@ -8,6 +8,7 @@ arch:
   - aarch64
 startup: once
 boot: manual
+image: "ghcr.io/cleanuparr/cleanuparr:latest"
 host_network: true
 ingress: false
 map:

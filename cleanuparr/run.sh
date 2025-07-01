@@ -1,8 +1,18 @@
 #!/usr/bin/env bash
 
-export RADARR_URL="${RADARR_URL}"
-export RADARR_API_KEY="${RADARR_API_KEY}"
-export SONARR_URL="${SONARR_URL}"
-export SONARR_API_KEY="${SONARR_API_KEY}"
+echo "Creating Cleanuparr config.yaml..."
+cat <<EOF > /config/config.yaml
+radarr:
+  url: "${RADARR_URL}"
+  api_key: "${RADARR_API_KEY}"
 
-/cleanuparr/cleanuparr
+sonarr:
+  url: "${SONARR_URL}"
+  api_key: "${SONARR_API_KEY}"
+EOF
+
+echo "Generated /config/config.yaml:"
+cat /config/config.yaml
+
+# Start main container entrypoint
+/cleanuparr
