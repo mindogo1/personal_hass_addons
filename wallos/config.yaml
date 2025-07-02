@@ -12,9 +12,7 @@ arch:
   - amd64
   - aarch64
 
-build:
-  context: .
-  dockerfile: Dockerfile
+image: "ghcr.io/ellite/wallos:3.3.0"
 
 map:
   - addon_config:rw
