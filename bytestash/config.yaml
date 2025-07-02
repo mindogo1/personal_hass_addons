@@ -1,6 +1,6 @@
 ---
 name: "ByteStash"
-version: "1.0.0"
+version: ".*"
 slug: bytestash
 description: "Self-hosted code snippet server (ByteStash) by jordan-dalby"
 url: "https://github.com/jordan-dalby/ByteStash"

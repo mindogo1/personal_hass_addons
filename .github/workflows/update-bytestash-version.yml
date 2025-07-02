@@ -1,0 +1,36 @@
+name: Update ByteStash Version
+
+on:
+  schedule:
+    - cron: '0 4 * * *'     # daily at 4 AM UTC
+  workflow_dispatch: {}
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Fetch latest ByteStash release tag
+        id: get_tag
+        run: |
+          tag=$(curl -s \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/jordan-dalby/ByteStash/releases/latest \
+            | jq -r .tag_name | sed 's/^v//')
+          echo "Latest tag: $tag"
+          echo "VERSION=$tag" >> $GITHUB_ENV
+
+      - name: Bump version in config.yaml
+        run: |
+          sed -i 's/^version: .*/version: "'"$VERSION"'"/' bytestash/config.yaml
+
+      - name: Commit & push version bump
+        run: |
+          git config --global user.name 'github-actions'
+          git config --global user.email 'actions@github.com'
+          git add bytestash/config.yaml
+          git diff --cached --quiet || git commit -m "chore: bump ByteStash to $VERSION"
+          git push
