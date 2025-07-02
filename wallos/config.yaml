@@ -1,7 +1,7 @@
 ---
 name: "Wallos"
-version: "3.3.0"
-slug: "wallos"
+version: "latest"
+slug: wallos
 description: "Self-hosted personal subscription tracker (Wallos)"
 url: "https://github.com/ellite/Wallos"
 
@@ -17,7 +17,7 @@ build:
   dockerfile: Dockerfile
 
 map:
-  - config:rw
+  - data:rw
 
 init: run.sh
 
