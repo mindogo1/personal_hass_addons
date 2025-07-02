@@ -1,6 +1,6 @@
 ---
 name: "Wallos"
-version: ".*"
+version: "3.3.0"
 slug: wallos
 description: "Self-hosted personal subscription tracker (Wallos)"
 url: "https://github.com/ellite/Wallos"
