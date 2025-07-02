@@ -18,8 +18,10 @@ build:
 
 map:
   - data:rw
+  - share:rw
+  - addon_config:rw
 
-init: run.sh
+init: false
 
 ingress: true
 ingress_port: 80
