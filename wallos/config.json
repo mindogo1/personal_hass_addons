@@ -4,8 +4,6 @@
   "slug": "wallos",
   "description": "Self-hosted personal subscription tracker (Wallos)",
   "url": "https://github.com/ellite/Wallos",
-  "startup": "services",
-  "boot": "auto",
   "arch": [
     "amd64",
     "aarch64"
@@ -17,7 +15,7 @@
   "map": [
     "data:rw"
   ],
-  "init": "run.sh",
+  "init": "/run.sh",
   "ingress": true,
   "ingress_port": 80,
   "ports": {
