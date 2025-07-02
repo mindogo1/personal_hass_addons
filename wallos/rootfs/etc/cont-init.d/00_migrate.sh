@@ -1,22 +1,26 @@
 #!/usr/bin/with-contenv bash
 set -e
 
-# Prepare persistence
+# Ensure persistence dirs exist
 mkdir -p /data/db
 mkdir -p /data/images/uploads/logos
 
-# Migrate existing DB
-if [ -d /var/www/html/db ] && [ "$(ls -A /var/www/html/db)" ]; then
-  mv /var/www/html/db/* /data/db/
+# Migrate DB only if original directory exists and is not a symlink
+if [ -d /var/www/html/db ] && [ ! -L /var/www/html/db ]; then
+  if [ "$(ls -A /var/www/html/db)" ]; then
+    mv /var/www/html/db/* /data/db/
+  fi
+  rm -rf /var/www/html/db
 fi
-rm -rf /var/www/html/db
-ln -s /data/db /var/www/html/db
+ln -sf /data/db /var/www/html/db
 
-# Migrate logos
-if [ -d /var/www/html/images/uploads/logos ] && [ "$(ls -A /var/www/html/images/uploads/logos)" ]; then
-  mv /var/www/html/images/uploads/logos/* /data/images/uploads/logos/
+# Migrate logos only if original directory exists and is not a symlink
+if [ -d /var/www/html/images/uploads/logos ] && [ ! -L /var/www/html/images/uploads/logos ]; then
+  if [ "$(ls -A /var/www/html/images/uploads/logos)" ]; then
+    mv /var/www/html/images/uploads/logos/* /data/images/uploads/logos/
+  fi
+  rm -rf /var/www/html/images/uploads/logos
 fi
-rm -rf /var/www/html/images/uploads/logos
-ln -s /data/images/uploads/logos /var/www/html/images/uploads/logos
+ln -sf /data/images/uploads/logos /var/www/html/images/uploads/logos
 
 echo "✔️ Wallos data migrated to /data"
