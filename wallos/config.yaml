@@ -1,19 +1,18 @@
 ---
 name: "Wallos"
-version: "1.0.2"
-slug: "wallos"
+version: ".*"
+slug: wallos
 description: "Self-hosted personal subscription tracker (Wallos)"
 url: "https://github.com/ellite/Wallos"
-startup: services
-boot: auto
-arch:
-  - amd64
-  - aarch64
-image: "bellamy/wallos:latest"
-map:
-  - config:rw
-ingress: true
-ingress_port: 80
-ports:
-  "80/tcp": 80
+codenotary: codenotary@frenck.dev
+webui: http://[HOST]:[PORT:80]
 init: false
+arch:
+  - aarch64
+  - amd64
+map:
+  - addon_config:rw
+  - share:rw
+  - media:rw
+ports:
+  80/tcp: 80
