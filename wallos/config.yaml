@@ -16,9 +16,11 @@ build:
   context: .
   dockerfile: Dockerfile
 
+# Persist under /data
 map:
   - data:rw
 
+# Use s6-overlay from base, no Docker init
 init: false
 
 ingress: true
