@@ -1,7 +1,7 @@
 ---
 name: "Wallos"
 version: "latest"
-slug: wallos
+slug: "wallos"
 description: "Self-hosted personal subscription tracker (Wallos)"
 url: "https://github.com/ellite/Wallos"
 
@@ -12,16 +12,14 @@ arch:
   - amd64
   - aarch64
 
-# Build from Dockerfile
 build:
   context: .
   dockerfile: Dockerfile
 
-# Persist under /data
 map:
   - data:rw
 
-# Use s6-overlay init, disable Docker init
+# disable default init, use s6-overlay from base
 init: false
 
 ingress: true
