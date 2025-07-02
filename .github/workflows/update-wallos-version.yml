@@ -1,0 +1,44 @@
+name: Update Wallos Version
+
+permissions:
+  contents: write
+
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Get latest Wallos release tag
+        id: get_tag
+        run: |
+          TAG=$(curl -s \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/ellite/Wallos/releases/latest \
+            | jq -r .tag_name)
+          VERSION=${TAG#v}
+          echo "Latest Wallos version: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Bump version in wallos/config.json
+        run: |
+          jq --arg v "$VERSION" '.version = $v' wallos/config.json \
+            > wallos/config.json.tmp \
+            && mv wallos/config.json.tmp wallos/config.json
+
+      - name: Commit & push version bump
+        run: |
+          git config --global user.name 'github-actions'
+          git config --global user.email 'actions@github.com'
+          git add wallos/config.json
+          git diff --cached --quiet || git commit -m "chore: bump Wallos to $VERSION"
+          git push
