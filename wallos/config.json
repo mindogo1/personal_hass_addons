@@ -6,7 +6,7 @@
   "codenotary": "mindogo1@example.com",
   "description": "Self-hosted personal subscription tracker (Wallos)",
   "environment": {},
-  "image": "ghcr.io/ellite/wallos-{arch}",
+  "image": "ghcr.io/ellite/wallos:latest",
   "init": false,
   "map": [
     "config:rw"
@@ -15,7 +15,8 @@
   "options": {
     "CONFIG_LOCATION": "/config/addons_config/wallos",
     "PGID": "0",
-    "PUID": "0"
+    "PUID": "0",
+    "TZ": "Europe/Vilnius"
   },
   "ports": {
     "80/tcp": 80
@@ -26,7 +27,8 @@
   "schema": {
     "CONFIG_LOCATION": "str",
     "PGID": "int",
-    "PUID": "int"
+    "PUID": "int",
+    "TZ": "str?"
   },
   "slug": "wallos",
   "startup": "services",
