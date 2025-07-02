@@ -1,1 +1,1 @@
-FROM bellamy/wallos:latest:latest
+FROM ghcr.io/ellite/wallos:latest
