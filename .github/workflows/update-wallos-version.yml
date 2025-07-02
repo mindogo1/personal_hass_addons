@@ -27,7 +27,7 @@ jobs:
 
       - name: Bump version in wallos/addon.yaml
         run: |
-          sed -i 's/^version: .*/version: "'"$VERSION"'"/' wallos/addon.yaml
+          sed -i 's/^version: .*/version: "'"$VERSION"'"/' wallos/config.yaml
 
       - name: Commit & push version bump
         run: |
