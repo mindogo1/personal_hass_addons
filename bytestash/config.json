@@ -1,0 +1,23 @@
+{
+  "name": "ByteStash",
+  "version": "1.0.0",
+  "slug": "bytestash",
+  "description": "Self-hosted code snippet server (ByteStash)",
+  "url": "https://github.com/jordan-dalby/ByteStash",
+  "arch": [
+    "amd64",
+    "aarch64",
+    "armv7"
+  ],
+  "startup": "services",
+  "boot": "auto",
+  "image": "ghcr.io/jordan-dalby/bytestash:latest",
+  "map": [
+    "config:rw"
+  ],
+  "ingress": true,
+  "ingress_port": 5000,
+  "ports": {
+    "5000/tcp": 5000
+  }
+}
