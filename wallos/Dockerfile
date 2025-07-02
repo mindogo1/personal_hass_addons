@@ -1,1 +1,0 @@
-FROM bellamy/wallos:latest
