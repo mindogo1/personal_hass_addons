@@ -1,5 +1,5 @@
 name: "Wallos"
-version: ".*"
+version: "1.0.0"
 slug: "wallos"
 description: "Self-hosted personal subscription tracker (Wallos)"
 url: "https://github.com/ellite/Wallos"
@@ -11,16 +11,15 @@ arch:
   - amd64
   - aarch64
 
-# Pull the official image
 image: "bellamy/wallos:latest"
 
-# Persist the config directory
 map:
   - config:rw
 
-# Expose the built-in web UI via ingress
 ingress: true
 ingress_port: 80
 
-# Tell Supervisor not to override the image's ENTRYPOINT
+ports:
+  "80/tcp": 80
+
 init: false
