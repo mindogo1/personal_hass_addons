@@ -6,20 +6,21 @@
 FROM node:22-alpine AS build
 
 ARG GIT_REF=dev
-ENV NODE_ENV=production
 
-# deps for native modules (sqlite3) during build
+# Tools for native builds (e.g., sqlite3 bindings) during install
 RUN apk add --no-cache git python3 make g++
 
 WORKDIR /src
 
-# clone upstream source
+# Clone upstream source
 RUN git clone --depth=1 -b "${GIT_REF}" https://github.com/javedh-dev/tracktor .
 
-# install dependencies & build
-# prefer npm (package-lock.json exists)
+# Install ALL deps incl. dev so TypeScript (tsc) exists, then build
 RUN --mount=type=cache,target=/root/.npm \
     npm ci && npm run build
+
+# Prune dev deps but keep compiled native modules
+RUN npm prune --omit=dev
 
 ############################
 # Runtime Stage
@@ -29,14 +30,10 @@ FROM node:22-alpine
 ENV NODE_ENV=production
 WORKDIR /opt/tracktor
 
-# copy the built app and package metadata
-COPY --from=build /src .
+# Copy built app and pruned node_modules from build stage
+COPY --from=build /src ./
 
-# install prod-only deps
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --omit=dev
-
-# add HA wrapper
+# Add HA wrapper
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 
