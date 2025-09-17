@@ -1,0 +1,31 @@
+name: "TitleCardMaker (Web UI)"
+slug: "tcm_webui"
+# IMPORTANT: Upstream uses the 'latest' tag for supporters.
+# Supervisor pulls <image>:<version>, so we set version to 'latest' to match.
+version: "latest"
+description: "TitleCardMaker v2 Web Interface (supporters-only image from GHCR)."
+url: "https://titlecardmaker.com/"
+arch:
+  - amd64
+stage: "stable"
+image: "ghcr.io/titlecardmaker/titlecardmaker-webui"
+startup: "application"
+init: false
+panel_icon: "mdi:format-title"
+webui: "http://[HOST]:[PORT:4242]/"
+ports:
+  "4242/tcp": 4242
+ports_description:
+  "4242/tcp": "Web UI"
+map:
+  - type: addon_config
+    read_only: false
+    path: /config
+options:
+  TZ: "Europe/Vilnius"
+  PUID: 1000
+  PGID: 1000
+schema:
+  TZ: str
+  PUID: int?
+  PGID: int?
