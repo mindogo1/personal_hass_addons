@@ -2,10 +2,16 @@
     #!/bin/sh
     set -e
 
-    # Read options from /data/options.json (simple extractor for quoted strings)
+    log() { echo "[tracktor-addon] $*"; }
+
+    # Read options from /data/options.json using bashio if available, sed fallback otherwise
     opt="/data/options.json"
     get_json_string() {
       key="$1"
+      if command -v bashio >/dev/null 2>&1; then
+        bashio::config "$key" 2>/dev/null || true
+        return
+      fi
       if [ -f "$opt" ]; then
         sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\"\\([^\"]*\\)\".*/\\1/p" "$opt" | head -n1
       fi
@@ -26,32 +32,56 @@
     chmod 0775 /data || true
 
     # If upstream provided a CMD, it is passed to this ENTRYPOINT as "$@".
-    # Prefer to exec that, so we don't guess how to start the app.
     if [ "$#" -gt 0 ]; then
-      echo "Starting Tracktor with upstream CMD: $@"
+      log "Starting Tracktor with upstream CMD: $@"
       exec "$@"
     fi
 
-    # Fallbacks only if no CMD was passed from upstream
-    echo "No upstream CMD detected; trying common start targets..."
+    log "No upstream CMD detected; attempting common start targets..."
 
-    if command -v node >/dev/null 2>&1; then
-      # Try common locations
-      for f in \
-        /usr/src/app/server.js \
-        /usr/src/app/build/index.js \
-        /app/server.js \
-        /app/build/index.js \
-        /server.js \
-        /build/index.js \
-      ; do
-        if [ -f "$f" ]; then
-          echo "Launching Node: $f"
-          exec node "$f"
+    # Try to honour an upstream entrypoint script if present
+    for ep in /usr/local/bin/docker-entrypoint.sh /usr/bin/docker-entrypoint.sh /docker-entrypoint.sh; do
+      if [ -x "$ep" ]; then
+        log "Found upstream entrypoint $ep; chaining to it"
+        exec "$ep"
+      fi
+    done
+
+    # Try known workdirs
+    for wd in /app /usr/src/app /srv/app /; do
+      if [ -d "$wd" ]; then
+        cd "$wd"
+        # 1) SvelteKit adapter-node common: `node build` (build is a dir)
+        if [ -d "./build" ]; then
+          if command -v node >/dev/null 2>&1; then
+            log "Launching: node build (workdir=$wd)"
+            exec node build
+          fi
         fi
-      done
-    fi
+        # 2) Explicit file paths
+        for f in \
+          ./build/index.js \
+          ./server.js \
+          ./index.js \
+          ./dist/index.js \
+          ./dist/server.js \
+        ; do
+          if [ -f "$f" ] && command -v node >/dev/null 2>&1; then
+            log "Launching Node: $f (workdir=$wd)"
+            exec node "$f"
+          fi
+        done
+      fi
+    done
 
-    # Last resort: idle to let you inspect the container
-    echo "Could not detect start command. Container will idle."
+    # Last resort: log and idle to allow inspection via bash
+    log "Could not detect start command. Environment:"
+    log "  PWD=$(pwd)"
+    log "  Files in PWD:"
+    ls -la || true
+    log "  Node version:"
+    node -v || true
+    log "  which node:"
+    which node || true
+    log "Container will idle for debugging."
     exec tail -f /dev/null
