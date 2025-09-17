@@ -1,17 +1,16 @@
-# Wallos — Home Assistant Add-on
+# Wallos — Home Assistant Add-on (Local Build)
 
-Wraps `bellamy/wallos` and exposes the Web UI on port 8282.
+This variant **builds locally** on your Home Assistant host (no GHCR pull). Supervisor will rebuild when `version` changes.
 
 ## Persistence
-The add-on maps `/config` (HA persistent storage), then symlinks:
 - `/var/www/html/db` → `/config/db`
 - `/var/www/html/images/uploads/logos` → `/config/logos`
 
-## Configuration
+## Options
 - `TZ`: Timezone (e.g., Europe/Vilnius)
-- `APP_URL`: Optional base URL if running behind a reverse proxy (e.g., https://wallos.example.com)
+- `APP_URL`: Optional base URL (e.g., https://wallos.example.com)
 
 ## Migrate existing data
-- Copy your prior Wallos `db` directory to this add-on's `/config/db`
-- Copy your prior `logos` directory to `/config/logos`
-Then start the add-on and open `http://HOST:8282/`.
+- Copy your previous `db` into `/addon_configs/<...wallos...>/db`
+- Copy `logos` into `/addon_configs/<...wallos...>/logos`
+Then install/start the add-on and open `http://HOST:8282/`.

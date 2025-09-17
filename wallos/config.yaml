@@ -1,12 +1,11 @@
 name: "Wallos (Web UI)"
 slug: "wallos"
-version: "0.1.3"
+version: "0.1.4"
 description: "Wallos: self-hosted subscription/expense tracker (wraps bellamy/wallos Docker image)."
 url: "https://wallosapp.com/"
 arch:
   - amd64
   - aarch64
-image: "ghcr.io/mindogo1/ha-addon-wallos"
 startup: "application"
 init: false
 stage: "stable"
