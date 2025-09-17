@@ -21,7 +21,6 @@
     CORS_ORIGINS_VAL="$(get_json_string CORS_ORIGINS)"
     PUBLIC_API_BASE_URL_VAL="$(get_json_string PUBLIC_API_BASE_URL)"
     AUTH_PIN_VAL="$(get_json_string AUTH_PIN)"
-    GIT_REF_VAL="$(get_json_string GIT_REF)"
 
     [ -n "$TZ_VAL" ] && export TZ="$TZ_VAL"
     [ -n "$CORS_ORIGINS_VAL" ] && export CORS_ORIGINS="$CORS_ORIGINS_VAL"
@@ -31,8 +30,6 @@
     # === Persistence ===
     mkdir -p /data
     chmod 0775 /data || true
-
-    # Default DB path if not provided
     if [ -z "$DATABASE_URL" ]; then
       export DATABASE_URL="file:/data/tracktor.sqlite"
     fi
@@ -45,7 +42,7 @@
       fi
     done
 
-    # Ensure minimal .env reflecting options
+    # Minimal .env reflecting options
     ENVFILE="/opt/tracktor/.env"
     touch "$ENVFILE"
     grep -q "^PORT=" "$ENVFILE" || echo "PORT=3000" >> "$ENVFILE"
@@ -57,66 +54,80 @@
 
     cd /opt/tracktor
 
-    # === Auto-migrate with Drizzle if 'auth' table is missing ===
-    need_migrate=0
-    node -e "const url=process.env.DATABASE_URL; (async()=>{ try { const m=await import('@libsql/client'); const c=m.createClient({url}); const r=await c.execute(\"select name from sqlite_master where type='table' and name='auth'\"); process.exit(r.rows?.length?0:2);} catch(e){console.error(e); process.exit(3);} })()" || need_migrate=$?
+    # Helper: returns 0 if 'auth' table exists
+    check_auth_table() {
+      node -e "const url=process.env.DATABASE_URL; (async()=>{ try { const m=await import('@libsql/client'); const c=m.createClient({url}); const r=await c.execute(\"select name from sqlite_master where type='table' and name='auth'\"); process.exit(r.rows?.length?0:2);} catch(e){console.error(e); process.exit(3);} })()" >/dev/null 2>&1
+    }
 
-    if [ "$need_migrate" -ne 0 ]; then
-      log "Auth table not found; applying Drizzle migrations to $DATABASE_URL"
+    # === 1) try compiled migration runner ===
+    if ! check_auth_table; then
+      for mf in app/backend/dist/src/db/migrate.js app/backend/dist/db/migrate.js app/backend/dist/migrate.js; do
+        if [ -f "$mf" ]; then
+          log "Found compiled migration runner: $mf"
+          set +e
+          node "$mf" migrate || node "$mf" push || node "$mf"
+          status=$?
+          set -e
+          if check_auth_table; then
+            log "Migrations applied via compiled runner."
+          else
+            log "Compiled runner finished (status=$status) but 'auth' table still missing."
+          fi
+          break
+        fi
+      done
+    fi
 
-      # Try npm workspace migration scripts first if present
-      if npm -w app/backend run | grep -qE 'db:(push|migrate)'; then
+    # === 2) drizzle-kit push with DRIZZLE_CONFIG ===
+    if ! check_auth_table; then
+      DRZ_CFG=""
+      for cfg in app/backend/drizzle.config.ts app/backend/drizzle.config.mts app/backend/drizzle.config.js app/backend/drizzle.config.mjs \
+                 drizzle.config.ts drizzle.config.mts drizzle.config.js drizzle.config.mjs; do
+        [ -f "$cfg" ] && { DRZ_CFG="$cfg"; break; }
+      done
+      if [ -n "$DRZ_CFG" ]; then
+        export DRIZZLE_CONFIG="$DRZ_CFG"
+        log "Running drizzle-kit push using DRIZZLE_CONFIG=$DRZ_CFG"
         set +e
-        npm -w app/backend run db:push || npm -w app/backend run db:migrate
+        npx --yes drizzle-kit@latest push
         status=$?
         set -e
-        if [ "$status" -ne 0 ]; then
-          log "Workspace migration script failed ($status); falling back to drizzle-kit CLI"
+        if check_auth_table; then
+          log "drizzle-kit push completed and 'auth' table exists."
         else
-          log "Workspace migration script completed"
-          need_migrate=0
+          log "drizzle-kit push exited ($status) and 'auth' still missing."
         fi
+      else
+        log "No drizzle config file found; skipping drizzle-kit."
       fi
+    fi
 
-      if [ "$need_migrate" -ne 0 ]; then
-        # Fallback: use drizzle-kit CLI via npx, prefer root config then backend config
-        if [ -f drizzle.config.ts ] || [ -f drizzle.config.mts ] || [ -f drizzle.config.js ] || [ -f drizzle.config.mjs ]; then
-          log "Running: npx drizzle-kit push:sqlite --config=drizzle.config.*"
-          npx --yes drizzle-kit@latest push:sqlite --config=drizzle.config.ts || \
-          npx --yes drizzle-kit@latest push:sqlite --config=drizzle.config.mts || \
-          npx --yes drizzle-kit@latest push:sqlite --config=drizzle.config.js || \
-          npx --yes drizzle-kit@latest push:sqlite --config=drizzle.config.mjs || true
-        elif [ -f app/backend/drizzle.config.ts ] || [ -f app/backend/drizzle.config.mts ] || [ -f app/backend/drizzle.config.js ] || [ -f app/backend/drizzle.config.mjs ]; then
-          log "Running: npx drizzle-kit push:sqlite --config=app/backend/drizzle.config.*"
-          npx --yes drizzle-kit@latest push:sqlite --config=app/backend/drizzle.config.ts || \
-          npx --yes drizzle-kit@latest push:sqlite --config=app/backend/drizzle.config.mts || \
-          npx --yes drizzle-kit@latest push:sqlite --config=app/backend/drizzle.config.js || \
-          npx --yes drizzle-kit@latest push:sqlite --config=app/backend/drizzle.config.mjs || true
-        else
-          log "No drizzle config file found; skipping CLI migration"
-        fi
+    # === 3) last-resort: create minimal auth table so PIN seeding can succeed ===
+    if ! check_auth_table; then
+      log "Creating minimal 'auth' table directly as last resort."
+      node -e "const url=process.env.DATABASE_URL; (async()=>{ const {createClient}=await import('@libsql/client'); const c=createClient({url}); await c.execute(`CREATE TABLE IF NOT EXISTS auth (id INTEGER PRIMARY KEY, hash TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);`); process.exit(0); })()"
+      if check_auth_table; then
+        log "Created 'auth' table directly."
+      else
+        log "Failed to create 'auth' table directly."
       fi
     fi
 
     # === Start the app ===
-    # Prefer npm start if provided, else node build / common entrypoints
     if node -e "process.exit(!!(require('./package.json').scripts||{}).start ? 0 : 1)" 2>/dev/null; then
       log "Starting: npm start"
       exec npm start --silent
     fi
-
     if [ -d "./build" ] && command -v node >/dev/null 2>&1; then
       log "Starting: node build"
       exec node build
     fi
-
     for f in ./build/index.js ./server.js ./index.js ./dist/index.js ./dist/server.js; do
       if [ -f "$f" ] && command -v node >/dev/null 2>&1; then
         log "Starting: node $f"
         exec node "$f"
       fi
     done
-
     log "Unable to detect start target. Listing tree for debugging:"
     ls -la
     exec tail -f /dev/null
