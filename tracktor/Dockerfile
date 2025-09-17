@@ -15,12 +15,15 @@ WORKDIR /src
 # Clone upstream source
 RUN git clone --depth=1 -b "${GIT_REF}" https://github.com/javedh-dev/tracktor .
 
-# Install ALL deps incl. dev so TypeScript (tsc) exists, then build
+# Install ALL deps incl. dev so TypeScript exists, then build
 RUN --mount=type=cache,target=/root/.npm \
     npm ci && npm run build
 
 # Prune dev deps but keep compiled native modules
 RUN npm prune --omit=dev
+
+# Ensure faker is available at runtime (seeders import it). Install w/o saving.
+RUN npm install --omit=dev --no-save @faker-js/faker@latest
 
 ############################
 # Runtime Stage
