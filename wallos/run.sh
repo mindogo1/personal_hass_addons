@@ -12,11 +12,10 @@
 
     TZ_VAL="$(get_json_string TZ)"
     APP_URL_VAL="$(get_json_string APP_URL)"
-
     [ -n "$TZ_VAL" ] && export TZ="$TZ_VAL"
     [ -n "$APP_URL_VAL" ] && export APP_URL="$APP_URL_VAL"
 
-    # Detect web user
+    # Detect web user (php-fpm / nginx image variants)
     detect_user() {
       for u in www-data nginx apache; do
         if id "$u" >/dev/null 2>&1; then
@@ -46,27 +45,29 @@
       ln -s ../../db/logos /var/www/html/images/uploads/logos
     fi
 
-    # If a zero-byte DB exists (from earlier attempts), remove it so Wallos can initialize schema
-    if [ -f /var/www/html/db/wallos.db ] && [ ! -s /var/www/html/db/wallos.db ]; then
-      echo "Removing empty wallos.db to allow fresh initialization"
-      rm -f /var/www/html/db/wallos.db
+    DB="/var/www/html/db/wallos.db"
+    TEMPLATE="/opt/wallos/wallos.empty.db"
+
+    # If DB is missing or suspiciously small (likely empty), seed from template
+    if [ ! -f "$DB" ] || [ ! -s "$DB" ] || [ "$(stat -c%s "$DB" 2>/dev/null || echo 0)" -lt 4096 ]; then
+      echo "Seeding database from template..."
+      if [ -f "$DB" ]; then
+        mv -f "$DB" "${DB}.bak.$(date +%s)" || true
+      fi
+      if [ -f "$TEMPLATE" ]; then
+        cp -a "$TEMPLATE" "$DB"
+      else
+        # As a last resort, create a valid empty SQLite file via PHP
+        php -r 'new SQLite3(getenv("DB"));' || true
+      fi
+      chown "$WEB_UID:$WEB_GID" "$DB" || true
+      chmod 0664 "$DB" || true
     fi
 
-    # --- AUTO-MIGRATE: run DB migrations once before starting services ---
+    # Run official migrations once (idempotent)
     if command -v php >/dev/null 2>&1; then
       echo "Running Wallos DB migrations..."
       php /var/www/html/endpoints/db/migrate.php || true
-    else
-      echo "PHP CLI not found; skip CLI migration (UI migration still available at /endpoints/db/migrate.php)"
-    fi
-
-    # Apply APP_URL if available
-    if [ -n "$APP_URL_VAL" ] && [ -f /var/www/html/.env ]; then
-      if grep -q '^APP_URL=' /var/www/html/.env; then
-        sed -i "s|^APP_URL=.*$|APP_URL=${APP_URL_VAL}|g" /var/www/html/.env || true
-      else
-        echo "APP_URL=${APP_URL_VAL}" >> /var/www/html/.env || true
-      fi
     fi
 
     # Start Wallos
