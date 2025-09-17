@@ -30,30 +30,58 @@
     # === Persistence & DB path ===
     mkdir -p /data
     chmod 0775 /data || true
-    if [ -z "$DATABASE_URL" ]; then
-      export DATABASE_URL="file:/data/tracktor.sqlite"
+
+    # Put DB under app/backend/data (which points to /data) so backend sees it
+    APP_DATA_DIR="/opt/tracktor/app/backend/data"
+    mkdir -p /opt/tracktor/app/backend || true
+    if [ ! -L "$APP_DATA_DIR" ]; then
+      rm -rf "$APP_DATA_DIR" 2>/dev/null || true
+      ln -s /data "$APP_DATA_DIR"
     fi
+
+    # Canonical DB file path (persisted)
+    DB_FILE="$APP_DATA_DIR/tracktor.sqlite"
+
+    # Export several envs in case backend reads a different one
+    export DATABASE_URL="file:$DB_FILE"
+    export LIBSQL_URL="$DATABASE_URL"
+    export TURSO_DATABASE_URL="$DATABASE_URL"
+    export SQLITE_URL="$DATABASE_URL"
 
     # Minimal .env reflecting options (for dotenv)
     ENVFILE="/opt/tracktor/.env"
     touch "$ENVFILE"
     grep -q "^PORT=" "$ENVFILE" || echo "PORT=3000" >> "$ENVFILE"
-    if [ -n "$AUTH_PIN_VAL" ]; then sed -i '/^AUTH_PIN=/d' "$ENVFILE"; echo "AUTH_PIN=$AUTH_PIN_VAL" >> "$ENVFILE"; fi
-    if [ -n "$CORS_ORIGINS_VAL" ]; then sed -i '/^CORS_ORIGINS=/d' "$ENVFILE"; echo "CORS_ORIGINS=$CORS_ORIGINS_VAL" >> "$ENVFILE"; fi
-    if [ -n "$PUBLIC_API_BASE_URL_VAL" ]; then sed -i '/^PUBLIC_API_BASE_URL=/d' "$ENVFILE"; echo "PUBLIC_API_BASE_URL=$PUBLIC_API_BASE_URL_VAL" >> "$ENVFILE"; fi
-    if [ -n "$TZ_VAL" ]; then sed -i '/^TZ=/d' "$ENVFILE"; echo "TZ=$TZ_VAL" >> "$ENVFILE"; fi
-    if [ -n "$DATABASE_URL" ]; then sed -i '/^DATABASE_URL=/d' "$ENVFILE"; echo "DATABASE_URL=$DATABASE_URL" >> "$ENVFILE"; fi
+    sed -i '/^AUTH_PIN=/d' "$ENVFILE"; [ -n "$AUTH_PIN_VAL" ] && echo "AUTH_PIN=$AUTH_PIN_VAL" >> "$ENVFILE" || true
+    sed -i '/^CORS_ORIGINS=/d' "$ENVFILE"; [ -n "$CORS_ORIGINS_VAL" ] && echo "CORS_ORIGINS=$CORS_ORIGINS_VAL" >> "$ENVFILE" || true
+    sed -i '/^PUBLIC_API_BASE_URL=/d' "$ENVFILE"; [ -n "$PUBLIC_API_BASE_URL_VAL" ] && echo "PUBLIC_API_BASE_URL=$PUBLIC_API_BASE_URL_VAL" >> "$ENVFILE" || true
+    sed -i '/^TZ=/d' "$ENVFILE"; [ -n "$TZ_VAL" ] && echo "TZ=$TZ_VAL" >> "$ENVFILE" || true
+    sed -i '/^DATABASE_URL=/d' "$ENVFILE"; echo "DATABASE_URL=$DATABASE_URL" >> "$ENVFILE"
 
     cd /opt/tracktor
 
-    # === Always ensure 'auth' table exists (idempotent) ===
-    log "Ensuring 'auth' table exists in $DATABASE_URL"
+    # === Pre-create required tables (idempotent) ===
+    log "Ensuring DB and base tables exist at $DATABASE_URL"
     node <<'NODE'
 const url = process.env.DATABASE_URL;
 (async () => {
   const { createClient } = await import('@libsql/client');
   const c = createClient({ url });
-  await c.execute("CREATE TABLE IF NOT EXISTS auth (id INTEGER PRIMARY KEY, hash TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)");
+  // auth table (for PIN)
+  await c.execute(`CREATE TABLE IF NOT EXISTS auth (
+    id INTEGER PRIMARY KEY,
+    hash TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+  )`);
+  // configs table (for /api/config)
+  await c.execute(`CREATE TABLE IF NOT EXISTS configs (
+    key TEXT PRIMARY KEY,
+    value TEXT,
+    description TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+  )`);
   process.exit(0);
 })().catch(e => { console.error(e); process.exit(1); });
 NODE
@@ -73,6 +101,7 @@ NODE
         exec node "$f"
       fi
     done
+
     log "Unable to detect start target. Listing tree for debugging:"
     ls -la
     exec tail -f /dev/null
