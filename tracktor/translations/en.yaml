@@ -2,15 +2,18 @@ configuration:
   TZ:
     name: Timezone
     description: e.g., Europe/Vilnius
+  AUTH_PIN:
+    name: Auth PIN
+    description: Optional 6-digit PIN
   CORS_ORIGINS:
     name: CORS Origins
-    description: 'App origin(s). Example: http://HA-IP:3339'
+    description: 'Example: http://HA-IP:3339'
   PUBLIC_API_BASE_URL:
     name: Public API Base URL
     description: 'Example: http://HA-IP:3339'
-  AUTH_PIN:
-    name: Auth PIN
-    description: 6-digit PIN for login
+  GIT_REF:
+    name: Git ref to build
+    description: 'Branch, tag, or commit (default: dev)'
 network:
   ports:
     3000/tcp: Tracktor Web UI

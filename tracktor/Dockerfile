@@ -1,12 +1,44 @@
-ARG BUILD_FROM=ghcr.io/javedh-dev/tracktor:latest
-FROM $BUILD_FROM
+# syntax=docker/dockerfile:1
 
-LABEL       io.hass.type="addon"       org.opencontainers.image.title="Tracktor HA add-on wrapper"       org.opencontainers.image.description="Home Assistant add-on wrapping ghcr.io/javedh-dev/tracktor"
+############################
+# Build Stage
+############################
+FROM node:22-alpine AS build
 
+ARG GIT_REF=dev
+ENV NODE_ENV=production
+
+# deps for native modules (sqlite3) during build
+RUN apk add --no-cache git python3 make g++
+
+WORKDIR /src
+
+# clone upstream source
+RUN git clone --depth=1 -b "${GIT_REF}" https://github.com/javedh-dev/tracktor .
+
+# install dependencies & build
+# prefer npm (package-lock.json exists)
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci && npm run build
+
+############################
+# Runtime Stage
+############################
+FROM node:22-alpine
+
+ENV NODE_ENV=production
+WORKDIR /opt/tracktor
+
+# copy the built app and package metadata
+COPY --from=build /src .
+
+# install prod-only deps
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --omit=dev
+
+# add HA wrapper
 COPY run.sh /run.sh
+RUN chmod +x /run.sh
 
-# Normalize CRLF/BOM and ensure executable
-RUN set -eux;         (sed -i '1s/^\xEF\xBB\xBF//' /run.sh || true);         (sed -i 's/\r$//' /run.sh || true);         chmod 0755 /run.sh
-
-# Force our wrapper as entrypoint to export options and set perms before app starts
-ENTRYPOINT ["/bin/sh", "/run.sh"]
+EXPOSE 3000
+ENTRYPOINT ["/bin/sh","/run.sh"]

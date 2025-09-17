@@ -1,22 +1,23 @@
-# Tracktor — Home Assistant Add-on
+# Tracktor — Home Assistant Add-on (from source)
 
-Wraps **ghcr.io/javedh-dev/tracktor:latest** and exposes the Web UI via a configurable host port.
+This add-on **builds Tracktor from the GitHub source** and runs it inside Home Assistant.
 
 ## Web UI
 - Container port: **3000**
 - Default host port: **3339** (editable in Add-on → Configuration → Network)
-- `webui: http://[HOST]:[PORT:3000]/` — the Open Web UI button tracks your chosen host port.
+- `webui: http://[HOST]:[PORT:3000]/` keeps the “Open Web UI” button in sync.
 
 ## Persistence
-- The add-on's persistent folder is `/data` (mounted by Supervisor).
-- Tracktor also uses `/data` → your DB and uploads live across restarts/updates.
+- The add-on’s `/data` is persistent across restarts/updates.
+- We symlink common app data dirs (`/opt/tracktor/data`, `/opt/tracktor/app/data`) to `/data` so the SQLite DB lives there.
 
-## Options (Environment variables)
-- `TZ`: Timezone, e.g. `Europe/Vilnius`
-- `CORS_ORIGINS`: e.g. `http://<HA-IP>:<host-port>`
-- `PUBLIC_API_BASE_URL`: e.g. `http://<HA-IP>:<host-port>`
-- `AUTH_PIN`: 6-digit PIN used by the app
+## Options
+- `TZ` (e.g., `Europe/Vilnius`)
+- `AUTH_PIN` (optional)
+- `CORS_ORIGINS` (optional, e.g., `http://<HA-IP>:<host-port>`)
+- `PUBLIC_API_BASE_URL` (optional, e.g., `http://<HA-IP>:<host-port>`)
+- `GIT_REF` branch/tag/commit to build (default `dev`).
 
 ## Notes
-- Upstream listens on **port 3000** and stores data in **/data**.
-- If you change the host port, update `CORS_ORIGINS` and `PUBLIC_API_BASE_URL` to match.
+- The project uses SvelteKit + Node/Express + SQLite (Sequelize). Build time dependencies for sqlite native bindings are included.
+- If upstream changes their build/start scripts, the launcher tries reasonable fallbacks and logs what it’s doing.

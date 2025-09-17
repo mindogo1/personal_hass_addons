@@ -1,7 +1,7 @@
-name: "Tracktor (Web UI)"
+name: "Tracktor (from source)"
 slug: "tracktor"
-version: "0.1.0"
-description: "Tracktor — Vehicle tracking/fuel/maintenance manager (wraps ghcr.io/javedh-dev/tracktor)."
+version: "0.2.0"
+description: "Tracktor — Vehicle tracking/fuel/maintenance manager (builds from GitHub source)."
 url: "https://github.com/javedh-dev/tracktor"
 arch:
   - amd64
@@ -11,21 +11,21 @@ init: false
 stage: "stable"
 ingress: false
 panel_icon: "mdi:car"
-# Container listens on 3000; HA will substitute the mapped host port for [PORT:3000]
 webui: "http://[HOST]:[PORT:3000]/"
 ports:
   "3000/tcp": 3339
 ports_description:
   "3000/tcp": "Tracktor Web UI (host port editable)"
-# /data is the add-on's persistent storage. Upstream also uses /data.
-# No map needed; Supervisor mounts /data automatically.
+# Persisted storage is /data (provided by Supervisor). We also create symlinks so app writes there.
 options:
   TZ: "Europe/Vilnius"
-  CORS_ORIGINS: "http://localhost:3339"
-  PUBLIC_API_BASE_URL: "http://localhost:3339"
-  AUTH_PIN: "123456"
+  AUTH_PIN: ""
+  CORS_ORIGINS: ""
+  PUBLIC_API_BASE_URL: ""
+  GIT_REF: "dev"           # branch, tag, or commit to build
 schema:
-  TZ: str
-  CORS_ORIGINS: str
-  PUBLIC_API_BASE_URL: str
-  AUTH_PIN: str
+  TZ: str?
+  AUTH_PIN: str?
+  CORS_ORIGINS: str?
+  PUBLIC_API_BASE_URL: str?
+  GIT_REF: str?
