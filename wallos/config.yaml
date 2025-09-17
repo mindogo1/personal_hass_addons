@@ -1,28 +1,29 @@
----
-name: "Wallos"
-version: "latest"
-slug: wallos
-description: "Self-hosted personal subscription tracker (Wallos)"
-url: "https://github.com/ellite/Wallos"
-
-startup: services
-boot: auto
-
+name: "Wallos (Web UI)"
+slug: "wallos"
+version: "0.1.0"
+description: "Wallos: self-hosted subscription/expense tracker (wraps bellamy/wallos Docker image)."
+url: "https://wallosapp.com/"
 arch:
   - amd64
   - aarch64
-
-build:
-  context: .
-  dockerfile: Dockerfile
-
-map:
-  - data:rw
-
+image: "ghcr.io/mindogo1/ha-addon-wallos-{arch}"
+startup: "application"
 init: false
-
-ingress: true
-ingress_port: 80
-
+stage: "stable"
+ingress: false
+panel_icon: "mdi:wallet"
+webui: "http://[HOST]:[PORT:8282]/"
 ports:
-  "80/tcp": 80
+  "8282/tcp": 8282
+ports_description:
+  "8282/tcp": "Wallos Web UI"
+map:
+  - type: addon_config
+    read_only: false
+    path: /config
+options:
+  TZ: "Europe/Vilnius"
+  APP_URL: ""  # Optional, e.g., https://wallos.example.com (sets application base URL)"
+schema:
+  TZ: str
+  APP_URL: str?

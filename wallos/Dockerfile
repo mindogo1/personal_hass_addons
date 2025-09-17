@@ -1,22 +1,11 @@
-ARG BUILD_FROM=ghcr.io/hassio-addons/base:18.0.1
-FROM ${BUILD_FROM}
+ARG BUILD_FROM=docker.io/bellamy/wallos:latest
+FROM $BUILD_FROM
 
-# Pull upstream Wallos
-FROM ghcr.io/ellite/wallos:latest AS wallos_upstream
+LABEL           io.hass.type="addon"           org.opencontainers.image.title="Wallos HA add-on wrapper"           org.opencontainers.image.description="Home Assistant add-on wrapping bellamy/wallos. Symlinks data dirs to /config."
 
-# Start from HA base again
-FROM ${BUILD_FROM}
+# Copy runtime
+COPY run.sh /run.sh
+RUN chmod +x /run.sh
 
-# Copy only application files, not the entire rootfs, to preserve /init and services
-COPY --from=wallos_upstream /var/www/html /var/www/html
-COPY --from=wallos_upstream /etc/nginx /etc/nginx
-COPY --from=wallos_upstream /etc/cron.d /etc/cron.d
-COPY --from=wallos_upstream /usr/local/etc/php-fpm.d /usr/local/etc/php-fpm.d
-COPY --from=wallos_upstream /usr/local/bin /usr/local/bin
-
-# Ensure startup script is executable
-RUN chmod +x /var/www/html/startup.sh
-
-# Add persistence hook
-COPY rootfs/etc/cont-init.d/00_migrate.sh /etc/cont-init.d/00_migrate.sh
-RUN chmod +x /etc/cont-init.d/00_migrate.sh
+# Default command
+CMD ["/run.sh"]

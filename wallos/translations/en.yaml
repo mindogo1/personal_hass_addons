@@ -1,0 +1,10 @@
+configuration:
+  TZ:
+    name: Timezone
+    description: e.g., Europe/Vilnius
+  APP_URL:
+    name: Base URL (optional)
+    description: e.g., https://wallos.example.com
+network:
+  ports:
+    8282/tcp: Wallos Web UI
