@@ -1,12 +1,12 @@
 name: "Wallos (Web UI)"
 slug: "wallos"
-version: "0.1.0"
+version: "0.1.1"
 description: "Wallos: self-hosted subscription/expense tracker (wraps bellamy/wallos Docker image)."
 url: "https://wallosapp.com/"
 arch:
   - amd64
   - aarch64
-image: "ghcr.io/mindogo1/ha-addon-wallos-{arch}"
+image: "ghcr.io/mindogo1/ha-addon-wallos"
 startup: "application"
 init: false
 stage: "stable"
@@ -23,7 +23,7 @@ map:
     path: /config
 options:
   TZ: "Europe/Vilnius"
-  APP_URL: ""  # Optional, e.g., https://wallos.example.com (sets application base URL)"
+  APP_URL: ""
 schema:
   TZ: str
   APP_URL: str?
