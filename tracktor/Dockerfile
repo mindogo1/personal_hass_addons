@@ -15,14 +15,23 @@ WORKDIR /src
 # Clone upstream source
 RUN git clone --depth=1 -b "${GIT_REF}" https://github.com/javedh-dev/tracktor .
 
-# Install ALL deps incl. dev so TypeScript exists, then build
+# Install ALL deps incl. dev so TypeScript exists, then build (workspaces)
 RUN --mount=type=cache,target=/root/.npm \
     npm ci && npm run build
+
+# ***** IMPORTANT *****     # Backend expects frontend build entry at app/backend/frontend/handler.js     # Copy the entire frontend build output into that path so imports resolve.
+RUN set -eux; \
+    if [ -f app/frontend/build/handler.js ]; then \
+      mkdir -p app/backend/frontend; \
+      cp -a app/frontend/build/* app/backend/frontend/; \
+    else \
+      echo "WARN: app/frontend/build/handler.js not found; frontend may not have built"; \
+    fi
 
 # Prune dev deps but keep compiled native modules
 RUN npm prune --omit=dev
 
-# Ensure faker is available at runtime (seeders import it). Install w/o saving.
+# Seed dependency used by backend seeders
 RUN npm install --omit=dev --no-save @faker-js/faker@latest
 
 ############################
