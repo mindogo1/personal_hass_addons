@@ -56,11 +56,14 @@
 
     # Helper: returns 0 if 'auth' table exists
     check_auth_table() {
-      node -e "const url=process.env.DATABASE_URL; (async()=>{ try { const m=await import('@libsql/client'); const c=m.createClient({url}); const r=await c.execute(\"select name from sqlite_master where type='table' and name='auth'\"); process.exit(r.rows?.length?0:2);} catch(e){console.error(e); process.exit(3);} })()" >/dev/null 2>&1
+      node -e 'const url=process.env.DATABASE_URL; (async()=>{ try { const m=await import("@libsql/client"); const c=m.createClient({url}); const r=await c.execute("select name from sqlite_master where type=\'table\' and name=\'auth\'"); process.exit(r.rows && r.rows.length ? 0 : 2);} catch(e){console.error(e); process.exit(3);} })()' >/dev/null 2>&1
     }
 
-    # === 1) try compiled migration runner ===
+    # === Try migrations if 'auth' missing ===
     if ! check_auth_table; then
+      log "Auth table not found; applying Drizzle migrations to $DATABASE_URL"
+
+      # 1) Compiled migration runner (JS) if present
       for mf in app/backend/dist/src/db/migrate.js app/backend/dist/db/migrate.js app/backend/dist/migrate.js; do
         if [ -f "$mf" ]; then
           log "Found compiled migration runner: $mf"
@@ -71,45 +74,45 @@
           if check_auth_table; then
             log "Migrations applied via compiled runner."
           else
-            log "Compiled runner finished (status=$status) but 'auth' table still missing."
+            log "Compiled runner finished (status=$status) but 'auth' still missing."
           fi
           break
         fi
       done
-    fi
 
-    # === 2) drizzle-kit push with DRIZZLE_CONFIG ===
-    if ! check_auth_table; then
-      DRZ_CFG=""
-      for cfg in app/backend/drizzle.config.ts app/backend/drizzle.config.mts app/backend/drizzle.config.js app/backend/drizzle.config.mjs \
-                 drizzle.config.ts drizzle.config.mts drizzle.config.js drizzle.config.mjs; do
-        [ -f "$cfg" ] && { DRZ_CFG="$cfg"; break; }
-      done
-      if [ -n "$DRZ_CFG" ]; then
-        export DRIZZLE_CONFIG="$DRZ_CFG"
-        log "Running drizzle-kit push using DRIZZLE_CONFIG=$DRZ_CFG"
-        set +e
-        npx --yes drizzle-kit@latest push
-        status=$?
-        set -e
-        if check_auth_table; then
-          log "drizzle-kit push completed and 'auth' table exists."
+      # 2) Drizzle CLI: cd into directory that has drizzle.config.* and run `npx drizzle-kit push`
+      if ! check_auth_table; then
+        DRZ_CFG=""
+        for cfg in app/backend/drizzle.config.ts app/backend/drizzle.config.mts app/backend/drizzle.config.js app/backend/drizzle.config.mjs \
+                   drizzle.config.ts drizzle.config.mts drizzle.config.js drizzle.config.mjs; do
+          if [ -f "$cfg" ]; then DRZ_CFG="$cfg"; break; fi
+        done
+        if [ -n "$DRZ_CFG" ]; then
+          DRZ_DIR="$(dirname "$DRZ_CFG")"
+          log "Running drizzle-kit push in $DRZ_DIR (config $(basename "$DRZ_CFG"))"
+          set +e
+          ( cd "$DRZ_DIR" && npx --yes drizzle-kit@latest push )
+          status=$?
+          set -e
+          if check_auth_table; then
+            log "drizzle-kit push completed and 'auth' table exists."
+          else
+            log "drizzle-kit push exited ($status) and 'auth' still missing."
+          fi
         else
-          log "drizzle-kit push exited ($status) and 'auth' still missing."
+          log "No drizzle config file found; skipping drizzle-kit."
         fi
-      else
-        log "No drizzle config file found; skipping drizzle-kit."
       fi
-    fi
 
-    # === 3) last-resort: create minimal auth table so PIN seeding can succeed ===
-    if ! check_auth_table; then
-      log "Creating minimal 'auth' table directly as last resort."
-      node -e "const url=process.env.DATABASE_URL; (async()=>{ const {createClient}=await import('@libsql/client'); const c=createClient({url}); await c.execute(`CREATE TABLE IF NOT EXISTS auth (id INTEGER PRIMARY KEY, hash TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);`); process.exit(0); })()"
-      if check_auth_table; then
-        log "Created 'auth' table directly."
-      else
-        log "Failed to create 'auth' table directly."
+      # 3) Last resort: create minimal 'auth' table with libsql (fix shell quoting).
+      if ! check_auth_table; then
+        log "Creating minimal 'auth' table directly as last resort."
+        node -e 'const url=process.env.DATABASE_URL; (async()=>{ const {createClient}=await import("@libsql/client"); const c=createClient({url}); await c.execute("CREATE TABLE IF NOT EXISTS auth (id INTEGER PRIMARY KEY, hash TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)"); process.exit(0); })()'
+        if check_auth_table; then
+          log "Created 'auth' table directly."
+        else
+          log "Failed to create 'auth' table directly."
+        fi
       fi
     fi
 
