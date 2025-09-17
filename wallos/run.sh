@@ -40,13 +40,15 @@
       fi
     fi
 
-    # Prefer upstream startup script if present
+    # Prefer upstream startup script
     if [ -x /startup.sh ]; then
       exec /startup.sh
     fi
 
-    # Fallbacks if upstream script is missing for some tag
-    if command -v nginx >/dev/null 2>&1; then
+    # Fallbacks
+    if command -v nginx >/dev/null 2>&1 && command -v php-fpm >/dev/null 2>&1; then
+      # Start php-fpm in background, then nginx in foreground
+      php-fpm -D
       exec nginx -g "daemon off;"
     fi
     if command -v php-fpm >/dev/null 2>&1; then

@@ -8,5 +8,5 @@ COPY run.sh /run.sh
 # Strip UTF-8 BOM and CRLF, then ensure executable
 RUN set -eux;         (sed -i '1s/^\xEF\xBB\xBF//' /run.sh || true);         (sed -i 's/\r$//' /run.sh || true);         chmod 0755 /run.sh;         head -n1 /run.sh
 
-# Always invoke via /bin/sh
-CMD ["/bin/sh", "/run.sh"]
+# Force our script as entrypoint so docker-php-entrypoint is bypassed
+ENTRYPOINT ["/bin/sh", "/run.sh"]
