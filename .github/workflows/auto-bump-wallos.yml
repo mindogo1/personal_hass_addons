@@ -1,0 +1,80 @@
+name: Auto-bump Wallos add-on when upstream changes
+
+on:
+  schedule:
+    - cron: "17 3 * * *"   # daily at 03:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check-and-bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Pull upstream image
+        run: docker pull docker.io/bellamy/wallos:latest
+
+      - name: Extract upstream digest
+        id: dig
+        run: |
+          set -e
+          # Grab the first repo digest (e.g., bellamy/wallos@sha256:abcd...)
+          RD=$(docker inspect --format='{{index .RepoDigests 0}}' bellamy/wallos:latest | awk -F'@' '{print $2}')
+          echo "digest=$RD" >> $GITHUB_OUTPUT
+          echo "Upstream digest: $RD"
+
+      - name: Read previous digest
+        id: prev
+        run: |
+          if [ -f wallos/UPSTREAM_DIGEST ]; then
+            echo "prev=$(cat wallos/UPSTREAM_DIGEST)" >> $GITHUB_OUTPUT
+          else
+            echo "prev=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Decide if bump needed
+        id: decide
+        run: |
+          NEW="${{ steps.dig.outputs.digest }}"
+          OLD="${{ steps.prev.outputs.prev }}"
+          echo "Old: '${OLD}'"
+          echo "New: '${NEW}'"
+          if [ -z "$NEW" ]; then
+            echo "No new digest found. Exiting."
+            echo "changed=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          if [ "$NEW" = "$OLD" ]; then
+            echo "No change in upstream digest."
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "Upstream changed."
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Bump add-on version (patch) and update digest
+        if: steps.decide.outputs.changed == 'true'
+        run: |
+          python3 scripts/bump_addon_version.py wallos/config.yaml
+          echo "${{ steps.dig.outputs.digest }}" > wallos/UPSTREAM_DIGEST
+
+      - name: Commit & push
+        if: steps.decide.outputs.changed == 'true'
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add wallos/config.yaml wallos/UPSTREAM_DIGEST
+          V=$(python3 - <<'PY'
+import re,sys
+s=open('wallos/config.yaml','r',encoding='utf-8').read()
+m=re.search(r'^version:\s*"(.*?)"', s, re.M)
+print(m.group(1) if m else "unknown")
+PY
+          )
+          git commit -m "Wallos: bump to ${V} (upstream ${${{ steps.dig.outputs.digest }}:0:18}…)"
+          git push
