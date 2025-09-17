@@ -30,7 +30,7 @@
     WEB_GID="$(id -g "$WEB_USER" 2>/dev/null || echo 0)"
     umask 0002
 
-    # Ensure db dir (this *is* the add-on persistent mount point)
+    # Ensure db dir (mounted inside chroot)
     mkdir -p /var/www/html/db
     chown -R "$WEB_UID:$WEB_GID" /var/www/html/db || true
     chmod -R 0775 /var/www/html/db || true
@@ -52,7 +52,13 @@
       rm -f /var/www/html/db/wallos.db
     fi
 
-    # Do NOT pre-create wallos.db; let Wallos initialize it on first load
+    # --- AUTO-MIGRATE: run DB migrations once before starting services ---
+    if command -v php >/dev/null 2>&1; then
+      echo "Running Wallos DB migrations..."
+      php /var/www/html/endpoints/db/migrate.php || true
+    else
+      echo "PHP CLI not found; skip CLI migration (UI migration still available at /endpoints/db/migrate.php)"
+    fi
 
     # Apply APP_URL if available
     if [ -n "$APP_URL_VAL" ] && [ -f /var/www/html/.env ]; then
