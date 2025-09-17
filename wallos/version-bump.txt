@@ -1,0 +1,2 @@
+# Optional helper: bump your wallos/config.yaml version to force rebuild, e.g.:
+# version: "0.2.3"

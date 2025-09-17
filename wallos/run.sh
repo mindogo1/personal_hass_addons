@@ -30,27 +30,29 @@
     WEB_GID="$(id -g "$WEB_USER" 2>/dev/null || echo 0)"
     umask 0002
 
-    # Ensure db dir (this is the add-on persistent mount point)
+    # Ensure db dir (this *is* the add-on persistent mount point)
     mkdir -p /var/www/html/db
     chown -R "$WEB_UID:$WEB_GID" /var/www/html/db || true
     chmod -R 0775 /var/www/html/db || true
 
-    # Ensure logos under db for persistence
+    # Ensure logos persisted under db
     mkdir -p /var/www/html/db/logos
     chown -R "$WEB_UID:$WEB_GID" /var/www/html/db/logos || true
     chmod -R 0775 /var/www/html/db/logos || true
 
-    # Point uploads/logos to db/logos (within chroot)
+    # Point uploads/logos to db/logos (inside chroot)
     mkdir -p /var/www/html/images/uploads
     if [ ! -e /var/www/html/images/uploads/logos ]; then
       ln -s ../../db/logos /var/www/html/images/uploads/logos
     fi
 
-    # Precreate SQLite DB file if missing
-    if [ ! -f /var/www/html/db/wallos.db ]; then
-      echo "Precreating SQLite DB at /var/www/html/db/wallos.db"
-      install -o "$WEB_UID" -g "$WEB_GID" -m 0664 /dev/null /var/www/html/db/wallos.db || true
+    # If a zero-byte DB exists (from earlier attempts), remove it so Wallos can initialize schema
+    if [ -f /var/www/html/db/wallos.db ] && [ ! -s /var/www/html/db/wallos.db ]; then
+      echo "Removing empty wallos.db to allow fresh initialization"
+      rm -f /var/www/html/db/wallos.db
     fi
+
+    # Do NOT pre-create wallos.db; let Wallos initialize it on first load
 
     # Apply APP_URL if available
     if [ -n "$APP_URL_VAL" ] && [ -f /var/www/html/.env ]; then
