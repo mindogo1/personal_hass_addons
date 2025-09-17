@@ -1,5 +1,5 @@
 name: "TitleCardMaker (v1 CLI)"
-version: "0.4.0"
+version: "0.4.1"
 slug: "titlecardmaker"
 description: "Automated title card maker for Plex/Jellyfin/Emby (v1). Wraps collinheist/titlecardmaker and exposes options via the add-on UI."
 url: "https://titlecardmaker.com/"
@@ -8,8 +8,7 @@ arch:
 image: "ghcr.io/mindogo1/ha-addon-titlecardmaker-{arch}"
 startup: "application"
 init: false
-stage: "experimental"
-# No web UI for v1 (CLI)
+stage: "stable"
 ingress: false
 panel_icon: "mdi:format-title"
 map:
@@ -21,24 +20,19 @@ map:
     path: /Media
 options:
   TZ: "Europe/Vilnius"
-  # Connections
   PLEX_URL: ""
   PLEX_TOKEN: ""
   SONARR_URL: ""
   SONARR_API_KEY: ""
   TMDB_API_KEY: ""
-  # Paths (container)
   SOURCE_DIR: "/config/source/"
   SERIES_YAML: "/config/yaml/sonarr_sync.yml"
   CARD_DIR: "/config/cards/"
-  # Sonarr sync filters
   SONARR_DOWNLOADED_ONLY: true
   SONARR_MONITORED_ONLY: true
-  # Scheduling & logging
   TCM_RUNTIME: "22:00"
   TCM_FREQUENCY: "1d"
   TCM_LOG: "INFO"
-  # File permissions
   PUID: 1000
   PGID: 1000
 schema:
