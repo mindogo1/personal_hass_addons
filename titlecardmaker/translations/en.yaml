@@ -1,0 +1,49 @@
+configuration:
+  TZ:
+    name: Timezone
+    description: e.g., Europe/Vilnius
+  PLEX_URL:
+    name: Plex URL
+    description: http://host:32400
+  PLEX_TOKEN:
+    name: Plex Token
+    description: Get from Plex account settings
+  SONARR_URL:
+    name: Sonarr URL
+    description: http://host:8989
+  SONARR_API_KEY:
+    name: Sonarr API Key
+    description: Settings → General → Security
+  TMDB_API_KEY:
+    name: TMDb API key
+    description: themoviedb.org API key
+  SOURCE_DIR:
+    name: Source images directory
+    description: Container path (persistent).
+  SERIES_YAML:
+    name: Series YAML path
+    description: Container path to series list yaml.
+  CARD_DIR:
+    name: Cards output directory
+    description: Where to save generated title cards.
+  SONARR_DOWNLOADED_ONLY:
+    name: Downloaded only
+    description: Only include items downloaded in Sonarr.
+  SONARR_MONITORED_ONLY:
+    name: Monitored only
+    description: Only include monitored series in Sonarr.
+  TCM_RUNTIME:
+    name: First run time
+    description: HH:MM 24h format (e.g., 22:00).
+  TCM_FREQUENCY:
+    name: Frequency
+    description: e.g., 1d, 12h
+  TCM_LOG:
+    name: Log level
+    description: DEBUG, INFO, WARNING, ERROR, or CRITICAL
+  PUID:
+    name: PUID
+    description: File owner user id (optional)
+  PGID:
+    name: PGID
+    description: File owner group id (optional)

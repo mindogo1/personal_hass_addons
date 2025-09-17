@@ -1,0 +1,56 @@
+name: Build TitleCardMaker Add-on (GHCR, matrix)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'titlecardmaker/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [ amd64, aarch64 ]
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.arch == 'aarch64' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version
+      id: ver
+      run: |
+        python - <<'PY' >> $GITHUB_ENV
+        import yaml
+        d=yaml.safe_load(open('titlecardmaker/config.yaml'))
+        print(f"VERSION={d['version']}")
+        PY
+
+      - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+      uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./titlecardmaker
+          file: ./titlecardmaker/Dockerfile
+          platforms: linux/${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64' }}
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/ha-addon-titlecardmaker-${{ matrix.arch }}:${{ env.VERSION }}
+            ghcr.io/${{ github.repository_owner }}/ha-addon-titlecardmaker-${{ matrix.arch }}:latest

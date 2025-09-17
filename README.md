@@ -1,29 +1,11 @@
-# Mindogo's Home Assistant Add-ons
+# Mindogo Personal Add-ons
 
-A collection of custom Home Assistant add-ons maintained by **mindogo1**. This repository hosts two fully functional add-ons that you can install directly from your Home Assistant instance.
+Custom Home Assistant add-ons maintained by **Mindogo**.
 
-## Add-ons Included
+## Add this repo to Home Assistant
+Settings → Add-ons → Add-on store → ⋮ → **Repositories** → paste your repo URL → **Add** → **Reload**.
 
-### 1. ByteStash
-- **Description**: Self-hosted code snippet server using [ByteStash](https://github.com/jordan-dalby/ByteStash).
-- **Repository Path**: [`/bytestash`](./bytestash)
-- **Features**:
-  - Web UI accessible via Ingress or host network  
-  - Persistent storage under `/config`  
-  - Automated version bump workflow on GitHub Actions  
-
-### 2. Wallos
-- **Description**: Self-hosted personal subscription tracker powered by [Wallos](https://github.com/ellite/Wallos).
-- **Repository Path**: [`/wallos`](./wallos)
-- **Features**:
-  - Built-in web UI via Ingress  
-  - Persistent storage under `/config`  
-  - Automated version bump workflow on GitHub Actions  
-
-## Installation
-
-1. In Home Assistant, go to **Settings → Add-on Store → Repositories**.  
-2. Add the repository URL:
-
-   ```text
-   https://github.com/mindogo1/personal_hass_addons
+## Auto updates
+- Bump `version` in the add-on’s `config.yaml`.
+- Push to `main`. GitHub Actions builds & pushes container images to GHCR.
+- HA will show the update (or auto-update if enabled).
