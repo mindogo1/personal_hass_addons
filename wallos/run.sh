@@ -31,7 +31,7 @@
       ln -s /config/logos /var/www/html/images/uploads/logos
     fi
 
-    # Write APP_URL to .env if available
+    # Apply APP_URL to .env if available
     if [ -n "$APP_URL_VAL" ] && [ -f /var/www/html/.env ]; then
       if grep -q '^APP_URL=' /var/www/html/.env; then
         sed -i "s|^APP_URL=.*$|APP_URL=${APP_URL_VAL}|g" /var/www/html/.env || true
@@ -40,16 +40,22 @@
       fi
     fi
 
-    # Launch upstream
-    if command -v docker-php-entrypoint >/dev/null 2>&1; then
-      exec docker-php-entrypoint apache2-foreground
-    elif command -v apache2-foreground >/dev/null 2>&1; then
-      exec apache2-foreground
-    elif command -v php-fpm >/dev/null 2>&1; then
-      exec php-fpm -F
-    elif command -v nginx >/dev/null 2>&1; then
-      exec nginx -g "daemon off;"
-    else
-      echo "Could not detect upstream entrypoint; container will idle."
-      exec tail -f /dev/null
+    # Prefer upstream startup script if present
+    if [ -x /startup.sh ]; then
+      exec /startup.sh
     fi
+
+    # Fallbacks if upstream script is missing for some tag
+    if command -v nginx >/dev/null 2>&1; then
+      exec nginx -g "daemon off;"
+    fi
+    if command -v php-fpm >/dev/null 2>&1; then
+      exec php-fpm -F
+    fi
+    if command -v php >/dev/null 2>&1; then
+      echo "Starting built-in PHP server on :80 as fallback"
+      exec php -S 0.0.0.0:80 -t /var/www/html
+    fi
+
+    echo "No known web server found. Container will idle."
+    exec tail -f /dev/null

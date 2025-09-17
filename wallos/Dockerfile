@@ -8,5 +8,5 @@ COPY run.sh /run.sh
 # Strip UTF-8 BOM and CRLF, then ensure executable
 RUN set -eux;         (sed -i '1s/^\xEF\xBB\xBF//' /run.sh || true);         (sed -i 's/\r$//' /run.sh || true);         chmod 0755 /run.sh;         head -n1 /run.sh
 
-# Run via /bin/sh explicitly to avoid shebang/BOM pitfalls
+# Always invoke via /bin/sh
 CMD ["/bin/sh", "/run.sh"]
