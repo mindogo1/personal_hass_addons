@@ -1,6 +1,6 @@
 name: "Wallos (Web UI)"
 slug: "wallos"
-version: "0.1.4"
+version: "0.2.0"
 description: "Wallos: self-hosted subscription/expense tracker (wraps bellamy/wallos Docker image)."
 url: "https://wallosapp.com/"
 arch:
@@ -11,11 +11,12 @@ init: false
 stage: "stable"
 ingress: false
 panel_icon: "mdi:wallet"
-webui: "http://[HOST]:[PORT:8282]/"
+# IMPORTANT: Use the container port in [PORT:<container>], HA will substitute the mapped host port
+webui: "http://[HOST]:[PORT:80]/"
 ports:
-  "8282/tcp": 8282
+  "80/tcp": 8282
 ports_description:
-  "8282/tcp": "Wallos Web UI"
+  "80/tcp": "Wallos Web UI (host port editable)"
 map:
   - type: addon_config
     read_only: false
