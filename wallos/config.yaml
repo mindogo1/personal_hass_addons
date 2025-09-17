@@ -1,6 +1,6 @@
 name: "Wallos (Web UI)"
 slug: "wallos"
-version: "0.1.1"
+version: "0.1.3"
 description: "Wallos: self-hosted subscription/expense tracker (wraps bellamy/wallos Docker image)."
 url: "https://wallosapp.com/"
 arch:
