@@ -1,0 +1,3 @@
+# Replace 'version' in tracktor/config.yaml with: "0.1.1"
+# Example:
+# version: "0.1.1"

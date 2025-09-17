@@ -2,7 +2,7 @@
     #!/bin/sh
     set -e
 
-    # Read options from /data/options.json
+    # Read options from /data/options.json (simple extractor for quoted strings)
     opt="/data/options.json"
     get_json_string() {
       key="$1"
@@ -11,38 +11,47 @@
       fi
     }
 
-    export TZ="$(get_json_string TZ || echo "")"
-    export CORS_ORIGINS="$(get_json_string CORS_ORIGINS || echo "")"
-    export PUBLIC_API_BASE_URL="$(get_json_string PUBLIC_API_BASE_URL || echo "")"
-    export AUTH_PIN="$(get_json_string AUTH_PIN || echo "")"
+    TZ_VAL="$(get_json_string TZ)"
+    CORS_ORIGINS_VAL="$(get_json_string CORS_ORIGINS)"
+    PUBLIC_API_BASE_URL_VAL="$(get_json_string PUBLIC_API_BASE_URL)"
+    AUTH_PIN_VAL="$(get_json_string AUTH_PIN)"
 
-    # Ensure persistent data dir exists and is writable
+    [ -n "$TZ_VAL" ] && export TZ="$TZ_VAL"
+    [ -n "$CORS_ORIGINS_VAL" ] && export CORS_ORIGINS="$CORS_ORIGINS_VAL"
+    [ -n "$PUBLIC_API_BASE_URL_VAL" ] && export PUBLIC_API_BASE_URL="$PUBLIC_API_BASE_URL_VAL"
+    [ -n "$AUTH_PIN_VAL" ] && export AUTH_PIN="$AUTH_PIN_VAL"
+
+    # Ensure persistent data directory exists and is writable
     mkdir -p /data
     chmod 0775 /data || true
-    # If the app expects a sqlite file in /data, ensure dir perms allow it.
 
-    # Some upstream images bind to 0.0.0.0:3000; nothing to change here.
-    # If Tracktor honors AUTH_PIN/CORS/Public base URL via envs, we're set.
-
-    # Start upstream CMD/ENTRYPOINT; if not available, try common Node starts.
-    # We exec the original entrypoint if we can find it; otherwise fall back.
-    if [ -x /startup.sh ]; then
-      exec /startup.sh
+    # If upstream provided a CMD, it is passed to this ENTRYPOINT as "$@".
+    # Prefer to exec that, so we don't guess how to start the app.
+    if [ "$#" -gt 0 ]; then
+      echo "Starting Tracktor with upstream CMD: $@"
+      exec "$@"
     fi
 
-    # If the image defines CMD ["node","server.js"] it will be used when we exec "container's default"
-    # Try common commands:
-    if command -v dumb-init >/dev/null 2>&1 && [ -f /usr/local/bin/docker-entrypoint.sh ]; then
-      exec /usr/local/bin/docker-entrypoint.sh "$@"
+    # Fallbacks only if no CMD was passed from upstream
+    echo "No upstream CMD detected; trying common start targets..."
+
+    if command -v node >/dev/null 2>&1; then
+      # Try common locations
+      for f in \
+        /usr/src/app/server.js \
+        /usr/src/app/build/index.js \
+        /app/server.js \
+        /app/build/index.js \
+        /server.js \
+        /build/index.js \
+      ; do
+        if [ -f "$f" ]; then
+          echo "Launching Node: $f"
+          exec node "$f"
+        fi
+      done
     fi
 
-    # Worst-case: try npm start or node if present
-    if command -v npm >/dev/null 2>&1; then
-      exec npm start --prefix /usr/src/app 2>&1
-    fi
-    if command -v node >/dev/null 2>&1 && [ -f /usr/src/app/server.js ]; then
-      exec node /usr/src/app/server.js
-    fi
-
-    echo "Could not detect upstream entrypoint; container will idle."
+    # Last resort: idle to let you inspect the container
+    echo "Could not detect start command. Container will idle."
     exec tail -f /dev/null
