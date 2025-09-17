@@ -1,0 +1,70 @@
+name: Auto-bump Tracktor add-on when upstream changes
+
+on:
+  schedule:
+    - cron: "23 4 * * *"  # daily
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check-and-bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Pull upstream image
+        run: docker pull ghcr.io/javedh-dev/tracktor:latest
+
+      - name: Extract upstream digest
+        id: dig
+        run: |
+          set -e
+          RD=$(docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/javedh-dev/tracktor:latest | awk -F'@' '{print $2}')
+          echo "digest=$RD" >> $GITHUB_OUTPUT
+          echo "Upstream digest: $RD"
+
+      - name: Read previous digest
+        id: prev
+        run: |
+          if [ -f tracktor/UPSTREAM_DIGEST ]; then
+            echo "prev=$(cat tracktor/UPSTREAM_DIGEST)" >> $GITHUB_OUTPUT
+          else
+            echo "prev=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Decide if bump needed
+        id: decide
+        run: |
+          NEW="${{ steps.dig.outputs.digest }}"
+          OLD="${{ steps.prev.outputs.prev }}"
+          if [ -z "$NEW" ] || [ "$NEW" = "$OLD" ]; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Bump add-on version (patch) and update digest
+        if: steps.decide.outputs.changed == 'true'
+        run: |
+          python3 scripts/bump_addon_version.py tracktor/config.yaml
+          echo "${{ steps.dig.outputs.digest }}" > tracktor/UPSTREAM_DIGEST
+
+      - name: Commit & push
+        if: steps.decide.outputs.changed == 'true'
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tracktor/config.yaml tracktor/UPSTREAM_DIGEST
+          V=$(python3 - <<'PY'
+import re
+s=open('tracktor/config.yaml','r',encoding='utf-8').read()
+m=re.search(r'^version:\s*"(.*?)"', s, re.M)
+print(m.group(1) if m else "unknown")
+PY
+          )
+          git commit -m "Tracktor: bump to ${V} (upstream digest changed)"
+          git push

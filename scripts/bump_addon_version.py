@@ -10,7 +10,6 @@ s = p.read_text(encoding="utf-8")
 
 m = re.search(r'^(version:\s*")(\d+)\.(\d+)\.(\d+)(")', s, re.M)
 if not m:
-    # Try a looser match: version: "X.Y" -> add .1
     m2 = re.search(r'^(version:\s*")(\d+)\.(\d+)(")', s, re.M)
     if m2:
         new = f'{m2.group(1)}{m2.group(2)}.{m2.group(3)}.1{m2.group(4)}'
@@ -18,7 +17,6 @@ if not m:
         p.write_text(s2, encoding="utf-8")
         print("Bumped to:", f"{m2.group(2)}.{m2.group(3)}.1")
         sys.exit(0)
-    # Default to 0.0.1
     s2 = re.sub(r'^(version:\s*")(.*?)(")', r'\g<1>0.0.1\3', s, flags=re.M)
     p.write_text(s2, encoding="utf-8")
     print("Bumped to:", "0.0.1")
