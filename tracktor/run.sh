@@ -4,7 +4,6 @@
 
     log() { echo "[tracktor-addon] $*"; }
 
-    # Read options from /data/options.json using bashio if available, sed fallback otherwise
     opt="/data/options.json"
     get_json_string() {
       key="$1"
@@ -27,61 +26,51 @@
     [ -n "$PUBLIC_API_BASE_URL_VAL" ] && export PUBLIC_API_BASE_URL="$PUBLIC_API_BASE_URL_VAL"
     [ -n "$AUTH_PIN_VAL" ] && export AUTH_PIN="$AUTH_PIN_VAL"
 
-    # Ensure persistent data directory exists and is writable
     mkdir -p /data
     chmod 0775 /data || true
 
-    # If upstream provided a CMD, it is passed to this ENTRYPOINT as "$@".
-    if [ "$#" -gt 0 ]; then
-      log "Starting Tracktor with upstream CMD: $@"
-      exec "$@"
-    fi
-
-    log "No upstream CMD detected; attempting common start targets..."
-
-    # Try to honour an upstream entrypoint script if present
+    # prefer upstream entrypoint if available, but PASS a command to it
     for ep in /usr/local/bin/docker-entrypoint.sh /usr/bin/docker-entrypoint.sh /docker-entrypoint.sh; do
       if [ -x "$ep" ]; then
-        log "Found upstream entrypoint $ep; chaining to it"
-        exec "$ep"
+        # find workdir with app
+        for wd in /app /usr/src/app /srv/app /; do
+          if [ -d "$wd" ]; then
+            cd "$wd"
+            if [ -d "./build" ]; then
+              log "Using upstream entrypoint with: node build (workdir=$wd)"
+              exec "$ep" node build
+            fi
+            for f in ./build/index.js ./server.js ./index.js ./dist/index.js ./dist/server.js; do
+              if [ -f "$f" ]; then
+                log "Using upstream entrypoint with: node $f (workdir=$wd)"
+                exec "$ep" node "$f"
+              fi
+            done
+          fi
+        done
+        # As a last resort, just call entrypoint with sh to inspect
+        log "Upstream entrypoint found but no build artifacts. Starting shell for debugging."
+        exec "$ep" sh -lc 'ls -la; echo "No build artifacts. Container idling..."; tail -f /dev/null'
       fi
     done
 
-    # Try known workdirs
+    # No upstream entrypoint, try to launch directly
     for wd in /app /usr/src/app /srv/app /; do
       if [ -d "$wd" ]; then
         cd "$wd"
-        # 1) SvelteKit adapter-node common: `node build` (build is a dir)
-        if [ -d "./build" ]; then
-          if command -v node >/dev/null 2>&1; then
-            log "Launching: node build (workdir=$wd)"
-            exec node build
-          fi
+        if [ -d "./build" ] && command -v node >/dev/null 2>&1; then
+          log "Launching directly: node build (workdir=$wd)"
+          exec node build
         fi
-        # 2) Explicit file paths
-        for f in \
-          ./build/index.js \
-          ./server.js \
-          ./index.js \
-          ./dist/index.js \
-          ./dist/server.js \
-        ; do
+        for f in ./build/index.js ./server.js ./index.js ./dist/index.js ./dist/server.js; do
           if [ -f "$f" ] && command -v node >/dev/null 2>&1; then
-            log "Launching Node: $f (workdir=$wd)"
+            log "Launching directly: node $f (workdir=$wd)"
             exec node "$f"
           fi
         done
       fi
     done
 
-    # Last resort: log and idle to allow inspection via bash
-    log "Could not detect start command. Environment:"
-    log "  PWD=$(pwd)"
-    log "  Files in PWD:"
+    log "Could not detect start command. PWD=$(pwd)"
     ls -la || true
-    log "  Node version:"
-    node -v || true
-    log "  which node:"
-    which node || true
-    log "Container will idle for debugging."
     exec tail -f /dev/null
