@@ -4,7 +4,9 @@ FROM $BUILD_FROM
 LABEL       io.hass.type="addon"       org.opencontainers.image.title="Wallos HA add-on wrapper"       org.opencontainers.image.description="Home Assistant add-on wrapping bellamy/wallos. Symlinks data dirs to /config."
 
 COPY run.sh /run.sh
-# Normalize Windows CRLF if present and make executable
-RUN sed -i 's/\r$//' /run.sh && chmod +x /run.sh
 
-CMD ["/run.sh"]
+# Strip UTF-8 BOM and CRLF, then ensure executable
+RUN set -eux;         (sed -i '1s/^\xEF\xBB\xBF//' /run.sh || true);         (sed -i 's/\r$//' /run.sh || true);         chmod 0755 /run.sh;         head -n1 /run.sh
+
+# Run via /bin/sh explicitly to avoid shebang/BOM pitfalls
+CMD ["/bin/sh", "/run.sh"]
