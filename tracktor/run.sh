@@ -38,7 +38,7 @@
     for d in /opt/tracktor/data /opt/tracktor/app/data; do
       if [ ! -e "$d" ]; then
         mkdir -p "$(dirname "$d")"
-        ln -s /data "$d" || true
+        ln -s /data "$d" 2>/dev/null || true
       fi
     done
 
@@ -46,22 +46,35 @@
     ENVFILE="/opt/tracktor/.env"
     touch "$ENVFILE"
     grep -q "^PORT=" "$ENVFILE" || echo "PORT=3000" >> "$ENVFILE"
-    [ -n "$AUTH_PIN_VAL" ] && { sed -i '/^AUTH_PIN=/d' "$ENVFILE"; echo "AUTH_PIN=$AUTH_PIN_VAL" >> "$ENVFILE"; }
-    [ -n "$CORS_ORIGINS_VAL" ] && { sed -i '/^CORS_ORIGINS=/d' "$ENVFILE"; echo "CORS_ORIGINS=$CORS_ORIGINS_VAL" >> "$ENVFILE"; }
-    [ -n "$PUBLIC_API_BASE_URL_VAL" ] && { sed -i '/^PUBLIC_API_BASE_URL=/d' "$ENVFILE"; echo "PUBLIC_API_BASE_URL=$PUBLIC_API_BASE_URL_VAL" >> "$ENVFILE"; }
-    [ -n "$TZ_VAL" ] && { sed -i '/^TZ=/d' "$ENVFILE"; echo "TZ=$TZ_VAL" >> "$ENVFILE"; }
-    [ -n "$DATABASE_URL" ] && { sed -i '/^DATABASE_URL=/d' "$ENVFILE"; echo "DATABASE_URL=$DATABASE_URL" >> "$ENVFILE"; }
+    if [ -n "$AUTH_PIN_VAL" ]; then sed -i '/^AUTH_PIN=/d' "$ENVFILE"; echo "AUTH_PIN=$AUTH_PIN_VAL" >> "$ENVFILE"; fi
+    if [ -n "$CORS_ORIGINS_VAL" ]; then sed -i '/^CORS_ORIGINS=/d' "$ENVFILE"; echo "CORS_ORIGINS=$CORS_ORIGINS_VAL" >> "$ENVFILE"; fi
+    if [ -n "$PUBLIC_API_BASE_URL_VAL" ]; then sed -i '/^PUBLIC_API_BASE_URL=/d' "$ENVFILE"; echo "PUBLIC_API_BASE_URL=$PUBLIC_API_BASE_URL_VAL" >> "$ENVFILE"; fi
+    if [ -n "$TZ_VAL" ]; then sed -i '/^TZ=/d' "$ENVFILE"; echo "TZ=$TZ_VAL" >> "$ENVFILE"; fi
+    if [ -n "$DATABASE_URL" ]; then sed -i '/^DATABASE_URL=/d' "$ENVFILE"; echo "DATABASE_URL=$DATABASE_URL" >> "$ENVFILE"; fi
 
     cd /opt/tracktor
 
     # Helper: returns 0 if 'auth' table exists
     check_auth_table() {
-      node -e 'const url=process.env.DATABASE_URL; (async()=>{ try { const m=await import("@libsql/client"); const c=m.createClient({url}); const r=await c.execute("select name from sqlite_master where type=\'table\' and name=\'auth\'"); process.exit(r.rows && r.rows.length ? 0 : 2);} catch(e){console.error(e); process.exit(3);} })()' >/dev/null 2>&1
+      node <<'NODE' >/dev/null 2>&1
+const url=process.env.DATABASE_URL;
+(async()=>{
+  try {
+    const {createClient} = await import('@libsql/client');
+    const c = createClient({ url });
+    const r = await c.execute("select name from sqlite_master where type='table' and name='auth'");
+    process.exit(r.rows && r.rows.length ? 0 : 2);
+  } catch (e) {
+    console.error(e);
+    process.exit(3);
+  }
+})();
+NODE
     }
 
     # === Try migrations if 'auth' missing ===
     if ! check_auth_table; then
-      log "Auth table not found; applying Drizzle migrations to $DATABASE_URL"
+      log "Auth table not found; applying migrations to $DATABASE_URL"
 
       # 1) Compiled migration runner (JS) if present
       for mf in app/backend/dist/src/db/migrate.js app/backend/dist/db/migrate.js app/backend/dist/migrate.js; do
@@ -85,7 +98,10 @@
         DRZ_CFG=""
         for cfg in app/backend/drizzle.config.ts app/backend/drizzle.config.mts app/backend/drizzle.config.js app/backend/drizzle.config.mjs \
                    drizzle.config.ts drizzle.config.mts drizzle.config.js drizzle.config.mjs; do
-          if [ -f "$cfg" ]; then DRZ_CFG="$cfg"; break; fi
+          if [ -f "$cfg" ]; then
+            DRZ_CFG="$cfg"
+            break
+          fi
         done
         if [ -n "$DRZ_CFG" ]; then
           DRZ_DIR="$(dirname "$DRZ_CFG")"
@@ -104,10 +120,18 @@
         fi
       fi
 
-      # 3) Last resort: create minimal 'auth' table with libsql (fix shell quoting).
+      # 3) Last resort: create minimal 'auth' table with libsql (heredoc to avoid shell quoting)
       if ! check_auth_table; then
         log "Creating minimal 'auth' table directly as last resort."
-        node -e 'const url=process.env.DATABASE_URL; (async()=>{ const {createClient}=await import("@libsql/client"); const c=createClient({url}); await c.execute("CREATE TABLE IF NOT EXISTS auth (id INTEGER PRIMARY KEY, hash TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)"); process.exit(0); })()'
+        node <<'NODE'
+const url=process.env.DATABASE_URL;
+(async()=>{
+  const {createClient} = await import('@libsql/client');
+  const c = createClient({ url });
+  await c.execute("CREATE TABLE IF NOT EXISTS auth (id INTEGER PRIMARY KEY, hash TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)");
+  process.exit(0);
+})().catch(e => { console.error(e); process.exit(1); });
+NODE
         if check_auth_table; then
           log "Created 'auth' table directly."
         else
