@@ -3,6 +3,7 @@ slug: "wallos"
 version: "0.2.2"
 description: "Wallos: self-hosted subscription/expense tracker (wraps bellamy/wallos Docker image)."
 url: "https://wallosapp.com/"
+changelog: "https://github.com/ellite/Wallos/releases/tag/v{version}"
 arch:
   - amd64
   - aarch64

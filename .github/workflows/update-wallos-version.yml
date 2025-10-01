@@ -1,39 +1,83 @@
 name: Update Wallos Version
 
-permissions:
-  contents: write
-
 on:
   schedule:
-    - cron: '0 5 * * *'     # daily at 4 AM UTC
-  workflow_dispatch: {}
+    - cron: "0 5 * * *"   # daily 05:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   bump-version:
     runs-on: ubuntu-latest
-
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
 
+      - name: Ensure jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
       - name: Fetch latest Wallos release tag
         id: get_tag
         run: |
-          tag=$(curl -s \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/ellite/Wallos/releases/latest \
+          set -euo pipefail
+          TAG=$(curl -fsSL https://api.github.com/repos/ellite/Wallos/releases/latest \
             | jq -r .tag_name | sed 's/^v//')
-          echo "Latest tag: $tag"
-          echo "VERSION=$tag" >> $GITHUB_ENV
+          if [ -z "$TAG" ] || [ "$TAG" = "null" ]; then
+            echo "No release tag found"; exit 1
+          fi
+          echo "version=$TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Bump version in config.yaml
+      - name: Update config.yaml (version + changelog)
         run: |
-          sed -i 's/^version: .*/version: "'"$VERSION"'"/' wallos/config.yaml
+          set -euo pipefail
+          F="wallos/config.yaml"
+          # bump/insert version (quoted)
+          sed -i -E "s/^version:\s*\".*\"/version: \"${{ steps.get_tag.outputs.version }}\"/; t; \
+            /^version:/! s/^/version: \"${{ steps.get_tag.outputs.version }}\"\n&/" "$F"
+          # upsert changelog pointing to upstream
+          if grep -q '^changelog:' "$F"; then
+            sed -i -E 's|^changelog:.*|changelog: "https://github.com/ellite/Wallos/releases/tag/v{version}"|' "$F"
+          else
+            sed -i '1 a changelog: "https://github.com/ellite/Wallos/releases/tag/v{version}"' "$F"
+          fi
+          echo "Updated $F to version ${{ steps.get_tag.outputs.version }}"
 
-      - name: Commit & push version bump
+      # --- Choose ONE of the push methods below ---
+
+      # A) Direct push (works if your repo allows actions to push directly)
+      - name: Commit & push (only if changed)
+        if: ${{ !secrets.PAT_PUSH }}
         run: |
-          git config --global user.name 'github-actions'
-          git config --global user.email 'actions@github.com'
-          git add bytestash/config.yaml
-          git diff --cached --quiet || git commit -m "chore: bump ByteStash to $VERSION"
-          git push
+          set -e
+          if [ -n "$(git status --porcelain)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add wallos/config.yaml
+            git commit -m "chore(wallos): bump to ${{ steps.get_tag.outputs.version }}"
+            git push
+          else
+            echo "No changes."
+          fi
+
+      # B) Push via Personal Access Token (use if direct push fails / branch protected).
+      #    Create a repo secret named PAT_PUSH with a token that has 'contents: write'.
+      - name: Commit & push via PAT (only if changed)
+        if: ${{ secrets.PAT_PUSH }}
+        env:
+          PAT: ${{ secrets.PAT_PUSH }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+        run: |
+          set -e
+          if [ -n "$(git status --porcelain)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add wallos/config.yaml
+            git commit -m "chore(wallos): bump to ${{ steps.get_tag.outputs.version }}"
+            git remote set-url origin https://x-access-token:${PAT}@github.com/${OWNER}/${REPO}.git
+            git push origin HEAD:${GITHUB_REF_NAME:-$(git rev-parse --abbrev-ref HEAD)}
+          else
+            echo "No changes."
+          fi
