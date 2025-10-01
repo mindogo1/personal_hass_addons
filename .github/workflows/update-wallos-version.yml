@@ -12,42 +12,85 @@ jobs:
   bump-version:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repo
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Ensure jq
-        run: sudo apt-get update && sudo apt-get install -y jq
-
-      - name: Fetch latest Wallos release tag
+      - name: Get latest Wallos release tag (via GitHub API with token)
         id: get_tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set -euo pipefail
-          TAG=$(curl -fsSL https://api.github.com/repos/ellite/Wallos/releases/latest \
-            | jq -r .tag_name | sed 's/^v//')
-          if [ -z "$TAG" ] || [ "$TAG" = "null" ]; then
-            echo "No release tag found"; exit 1
-          fi
-          echo "version=$TAG" >> "$GITHUB_OUTPUT"
+          set -e
+          python3 - <<'PY'
+          import json, os, sys, urllib.request
+          req = urllib.request.Request(
+              "https://api.github.com/repos/ellite/Wallos/releases/latest",
+              headers={
+                  "Accept": "application/vnd.github+json",
+                  "User-Agent": "ha-addon-version-bump",
+                  # Use token to avoid rate limiting
+                  **({"Authorization": f"Bearer {os.environ.get('GH_TOKEN')}"}
+                     if os.environ.get('GH_TOKEN') else {})
+              }
+          )
+          with urllib.request.urlopen(req, timeout=30) as r:
+              data = json.load(r)
+          tag = (data.get("tag_name") or "").strip()
+          if not tag:
+              print("::error::No tag_name found on latest release", file=sys.stderr)
+              sys.exit(1)
+          # strip leading 'v'
+          if tag.startswith("v"):
+              tag = tag[1:]
+          print(f"::set-output name=version::{tag}")
+          PY
 
-      - name: Update config.yaml (version + changelog)
+      - name: Update wallos/config.yaml (version + changelog)
         run: |
-          set -euo pipefail
-          F="wallos/config.yaml"
-          # bump/insert version (quoted)
-          sed -i -E "s/^version:\s*\".*\"/version: \"${{ steps.get_tag.outputs.version }}\"/; t; \
-            /^version:/! s/^/version: \"${{ steps.get_tag.outputs.version }}\"\n&/" "$F"
-          # upsert changelog pointing to upstream
-          if grep -q '^changelog:' "$F"; then
-            sed -i -E 's|^changelog:.*|changelog: "https://github.com/ellite/Wallos/releases/tag/v{version}"|' "$F"
-          else
-            sed -i '1 a changelog: "https://github.com/ellite/Wallos/releases/tag/v{version}"' "$F"
-          fi
-          echo "Updated $F to version ${{ steps.get_tag.outputs.version }}"
+          set -e
+          python3 - <<'PY'
+          import re, sys, io
+          p = "wallos/config.yaml"
+          ver = os.environ.get("VERSION")
+          if not ver:
+              # pick from step output (GitHub preserves steps.get_tag.outputs.version as env var)
+              ver = "${{ steps.get_tag.outputs.version }}"
+          s = open(p, "r", encoding="utf-8").read()
 
-      # --- Choose ONE of the push methods below ---
+          # ensure quoted version
+          if re.search(r'^version:\s*".*?"\s*$', s, re.M):
+              s = re.sub(r'^version:\s*".*?"\s*$', f'version: "{ver}"', s, flags=re.M)
+          elif re.search(r'^version:\s*\S+\s*$', s, re.M):
+              s = re.sub(r'^version:\s*\S+\s*$', f'version: "{ver}"', s, flags=re.M)
+          else:
+              # insert near top after name/slug if missing
+              m = re.search(r'^(name:.*\n)', s)
+              if m:
+                  idx = m.end()
+                  s = s[:idx] + f'version: "{ver}"\n' + s[idx:]
+              else:
+                  s = f'version: "{ver}"\n' + s
 
-      # A) Direct push (works if your repo allows actions to push directly)
-      - name: Commit & push (only if changed)
+          # upsert changelog line to upstream releases
+          ch = 'changelog: "https://github.com/ellite/Wallos/releases/tag/v{version}"'
+          if re.search(r'^changelog:\s*".*?"\s*$', s, re.M):
+              s = re.sub(r'^changelog:\s*".*?"\s*$', ch, s, flags=re.M)
+          else:
+              # insert after url: if present, else near top
+              m = re.search(r'^url:\s*".*?"\s*$', s, re.M)
+              if m:
+                  idx = m.end()
+                  s = s[:idx] + "\n" + ch + s[idx:]
+              else:
+                  s = ch + "\n" + s
+
+          open(p, "w", encoding="utf-8").write(s)
+          print(f"Updated {p} -> {ver}")
+          PY
+        env:
+          VERSION: ${{ steps.get_tag.outputs.version }}
+
+      - name: Commit & push (direct)
         if: ${{ !secrets.PAT_PUSH }}
         run: |
           set -e
@@ -57,27 +100,6 @@ jobs:
             git add wallos/config.yaml
             git commit -m "chore(wallos): bump to ${{ steps.get_tag.outputs.version }}"
             git push
-          else
-            echo "No changes."
-          fi
-
-      # B) Push via Personal Access Token (use if direct push fails / branch protected).
-      #    Create a repo secret named PAT_PUSH with a token that has 'contents: write'.
-      - name: Commit & push via PAT (only if changed)
-        if: ${{ secrets.PAT_PUSH }}
-        env:
-          PAT: ${{ secrets.PAT_PUSH }}
-          OWNER: ${{ github.repository_owner }}
-          REPO: ${{ github.event.repository.name }}
-        run: |
-          set -e
-          if [ -n "$(git status --porcelain)" ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add wallos/config.yaml
-            git commit -m "chore(wallos): bump to ${{ steps.get_tag.outputs.version }}"
-            git remote set-url origin https://x-access-token:${PAT}@github.com/${OWNER}/${REPO}.git
-            git push origin HEAD:${GITHUB_REF_NAME:-$(git rev-parse --abbrev-ref HEAD)}
           else
             echo "No changes."
           fi
