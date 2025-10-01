@@ -2,7 +2,7 @@ name: "TitleCardMaker (Web UI)"
 slug: "tcm_webui"
 # IMPORTANT: Upstream uses the 'latest' tag for supporters.
 # Supervisor pulls <image>:<version>, so we set version to 'latest' to match.
-version: "latest"
+version: "latest-<something>"
 description: "TitleCardMaker v2 Web Interface (supporters-only image from GHCR)."
 url: "https://titlecardmaker.com/"
 changelog: "https://github.com/CollinHeist/TitleCardMaker/releases/tag/v{version}"
