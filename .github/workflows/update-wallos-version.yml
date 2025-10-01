@@ -5,7 +5,7 @@ permissions:
 
 on:
   schedule:
-    - cron: '0 5 * * *'     # daily at 4 AM UTC
+    - cron: '0 5 * * *'     # daily at 05:00 UTC
   workflow_dispatch: {}
 
 jobs:
@@ -19,21 +19,40 @@ jobs:
       - name: Fetch latest Wallos release tag
         id: get_tag
         run: |
-          tag=$(curl -s \
-            -H "Accept: application/vnd.github.v3+json" \
+          set -e
+          RAW_TAG=$(curl -s -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/repos/ellite/Wallos/releases/latest \
-            | jq -r .tag_name | sed 's/^v//')
-          echo "Latest tag: $tag"
-          echo "VERSION=$tag" >> $GITHUB_ENV
+            | jq -r .tag_name)
+          [ -n "$RAW_TAG" ] && [ "$RAW_TAG" != "null" ]
+          VERSION="${RAW_TAG#v}"
+          echo "RAW_TAG=$RAW_TAG" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Latest tag: $RAW_TAG (version: $VERSION)"
 
-      - name: Bump version in config.yaml
+      - name: Bump version in config.yaml (safe, no duplicates)
         run: |
-          sed -i 's/^version: .*/version: "'"$VERSION"'"/' wallos/config.yaml
+          set -e
+          F="wallos/config.yaml"
+          awk -v V="$VERSION" '
+            BEGIN{seen=0}
+            /^version:[[:space:]]*/{
+              if (!seen) { print "version: \"" V "\""; seen=1; next }
+              else { next }
+            }
+            { print }
+          ' "$F" > "$F.tmp" && mv "$F.tmp" "$F"
+
+      - name: Upsert changelog with exact upstream tag URL
+        run: |
+          set -e
+          F="wallos/config.yaml"
+          if grep -q '^changelog:' "$F"; then
+            sed -i 's|^changelog:.*|changelog: "https://github.com/ellite/Wallos/releases/tag/'"$RAW_TAG"'"|' "$F"
+          else
+            sed -i '1ichangelog: "https://github.com/ellite/Wallos/releases/tag/'"$RAW_TAG"'"' "$F"
+          fi
 
       - name: Commit & push version bump
         run: |
+          set -e
           git config --global user.name 'github-actions'
-          git config --global user.email 'actions@github.com'
-          git add wallos/config.yaml
-          git diff --cached --quiet || git commit -m "chore(wallos): bump to $VERSION"
-          git push

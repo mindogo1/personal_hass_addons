@@ -1,39 +1,61 @@
-version: "1.5.8"
----
-version: "1.5.8"
-name: "ByteStash"
-version: "1.5.8"
-version: "1.5.8"
-slug: bytestash
-version: "1.5.8"
-description: "Self-hosted code snippet server (ByteStash) by jordan-dalby"
-version: "1.5.8"
-url: "https://github.com/jordan-dalby/ByteStash"
-version: "1.5.8"
-changelog: "https://github.com/jordan-dalby/ByteStash/releases/tag/v{version}"
-version: "1.5.8"
-codenotary: codenotary@frenck.dev
-version: "1.5.8"
-webui: http://[HOST]:[PORT:5000]
-version: "1.5.8"
-init: false
-version: "1.5.8"
-arch:
-version: "1.5.8"
-  - aarch64
-version: "1.5.8"
-  - amd64
-version: "1.5.8"
-  - armv7
-version: "1.5.8"
-map:
-version: "1.5.8"
-  - addon_config:rw
-version: "1.5.8"
-  - share:rw
-version: "1.5.8"
-  - media:rw
-version: "1.5.8"
-ports:
-version: "1.5.8"
-  5000/tcp: 5000
+name: Update ByteStash Version
+
+permissions:
+  contents: write
+
+on:
+  schedule:
+    - cron: '0 4 * * *'     # daily at 04:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Fetch latest ByteStash release tag
+        id: get_tag
+        run: |
+          set -e
+          tag=$(curl -s \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/jordan-dalby/ByteStash/releases/latest \
+            | jq -r .tag_name | sed 's/^v//')
+          [ -n "$tag" ] && [ "$tag" != "null" ]
+          echo "Latest tag: $tag"
+          echo "VERSION=$tag" >> $GITHUB_ENV
+
+      - name: Bump version in config.yaml (safe, no duplicates)
+        run: |
+          set -e
+          F="bytestash/config.yaml"
+          awk -v V="$VERSION" '
+            BEGIN{seen=0}
+            /^version:[[:space:]]*/{
+              if (!seen) { print "version: \"" V "\""; seen=1; next }
+              else { next }  # drop duplicates if any
+            }
+            { print }
+          ' "$F" > "$F.tmp" && mv "$F.tmp" "$F"
+
+      - name: Ensure upstream changelog line exists
+        run: |
+          set -e
+          F="bytestash/config.yaml"
+          if grep -q '^changelog:' "$F"; then
+            sed -i 's|^changelog:.*|changelog: "https://github.com/jordan-dalby/ByteStash/releases/tag/v{version}"|' "$F"
+          else
+            sed -i '1ichangelog: "https://github.com/jordan-dalby/ByteStash/releases/tag/v{version}"' "$F"
+          fi
+
+      - name: Commit & push version bump
+        run: |
+          set -e
+          git config --global user.name 'github-actions'
+          git config --global user.email 'actions@github.com'
+          git add bytestash/config.yaml
+          git diff --cached --quiet || git commit -m "chore(bytestash): bump to $VERSION"
+          git push
