@@ -1,105 +1,39 @@
 name: Update Wallos Version
 
-on:
-  schedule:
-    - cron: "0 5 * * *"   # daily 05:00 UTC
-  workflow_dispatch:
-
 permissions:
   contents: write
+
+on:
+  schedule:
+    - cron: '0 5 * * *'     # daily at 4 AM UTC
+  workflow_dispatch: {}
 
 jobs:
   bump-version:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Check out repo
         uses: actions/checkout@v4
 
-      - name: Get latest Wallos release tag (via GitHub API with token)
+      - name: Fetch latest Wallos release tag
         id: get_tag
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set -e
-          python3 - <<'PY'
-          import json, os, sys, urllib.request
-          req = urllib.request.Request(
-              "https://api.github.com/repos/ellite/Wallos/releases/latest",
-              headers={
-                  "Accept": "application/vnd.github+json",
-                  "User-Agent": "ha-addon-version-bump",
-                  # Use token to avoid rate limiting
-                  **({"Authorization": f"Bearer {os.environ.get('GH_TOKEN')}"}
-                     if os.environ.get('GH_TOKEN') else {})
-              }
-          )
-          with urllib.request.urlopen(req, timeout=30) as r:
-              data = json.load(r)
-          tag = (data.get("tag_name") or "").strip()
-          if not tag:
-              print("::error::No tag_name found on latest release", file=sys.stderr)
-              sys.exit(1)
-          # strip leading 'v'
-          if tag.startswith("v"):
-              tag = tag[1:]
-          print(f"::set-output name=version::{tag}")
-          PY
+          tag=$(curl -s \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/ellite/Wallos/releases/latest \
+            | jq -r .tag_name | sed 's/^v//')
+          echo "Latest tag: $tag"
+          echo "VERSION=$tag" >> $GITHUB_ENV
 
-      - name: Update wallos/config.yaml (version + changelog)
+      - name: Bump version in config.yaml
         run: |
-          set -e
-          python3 - <<'PY'
-          import re, sys, io
-          p = "wallos/config.yaml"
-          ver = os.environ.get("VERSION")
-          if not ver:
-              # pick from step output (GitHub preserves steps.get_tag.outputs.version as env var)
-              ver = "${{ steps.get_tag.outputs.version }}"
-          s = open(p, "r", encoding="utf-8").read()
+          sed -i 's/^version: .*/version: "'"$VERSION"'"/' wallos/config.yaml
 
-          # ensure quoted version
-          if re.search(r'^version:\s*".*?"\s*$', s, re.M):
-              s = re.sub(r'^version:\s*".*?"\s*$', f'version: "{ver}"', s, flags=re.M)
-          elif re.search(r'^version:\s*\S+\s*$', s, re.M):
-              s = re.sub(r'^version:\s*\S+\s*$', f'version: "{ver}"', s, flags=re.M)
-          else:
-              # insert near top after name/slug if missing
-              m = re.search(r'^(name:.*\n)', s)
-              if m:
-                  idx = m.end()
-                  s = s[:idx] + f'version: "{ver}"\n' + s[idx:]
-              else:
-                  s = f'version: "{ver}"\n' + s
-
-          # upsert changelog line to upstream releases
-          ch = 'changelog: "https://github.com/ellite/Wallos/releases/tag/v{version}"'
-          if re.search(r'^changelog:\s*".*?"\s*$', s, re.M):
-              s = re.sub(r'^changelog:\s*".*?"\s*$', ch, s, flags=re.M)
-          else:
-              # insert after url: if present, else near top
-              m = re.search(r'^url:\s*".*?"\s*$', s, re.M)
-              if m:
-                  idx = m.end()
-                  s = s[:idx] + "\n" + ch + s[idx:]
-              else:
-                  s = ch + "\n" + s
-
-          open(p, "w", encoding="utf-8").write(s)
-          print(f"Updated {p} -> {ver}")
-          PY
-        env:
-          VERSION: ${{ steps.get_tag.outputs.version }}
-
-      - name: Commit & push (direct)
-        if: ${{ !secrets.PAT_PUSH }}
+      - name: Commit & push version bump
         run: |
-          set -e
-          if [ -n "$(git status --porcelain)" ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add wallos/config.yaml
-            git commit -m "chore(wallos): bump to ${{ steps.get_tag.outputs.version }}"
-            git push
-          else
-            echo "No changes."
-          fi
+          git config --global user.name 'github-actions'
+          git config --global user.email 'actions@github.com'
+          git add wallos/config.yaml
+          git diff --cached --quiet || git commit -m "chore(wallos): bump to $VERSION"
+          git push
