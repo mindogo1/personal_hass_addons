@@ -5,6 +5,7 @@ slug: "tcm_webui"
 version: "latest"
 description: "TitleCardMaker v2 Web Interface (supporters-only image from GHCR)."
 url: "https://titlecardmaker.com/"
+changelog: "https://github.com/CollinHeist/TitleCardMaker/releases/tag/v{version}"
 arch:
   - amd64
 stage: "stable"
