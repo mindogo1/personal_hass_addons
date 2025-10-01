@@ -1,2 +1,0 @@
-# (Optional) Replace your wallos/config.yaml version to force rebuild
-# version: "0.1.6"
