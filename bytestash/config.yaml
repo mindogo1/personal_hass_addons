@@ -4,6 +4,7 @@ version: "1.5.8"
 slug: bytestash
 description: "Self-hosted code snippet server (ByteStash) by jordan-dalby"
 url: "https://github.com/jordan-dalby/ByteStash"
+changelog: "https://github.com/jordan-dalby/ByteStash/releases/tag/v{version}"
 codenotary: codenotary@frenck.dev
 webui: http://[HOST]:[PORT:5000]
 init: false
