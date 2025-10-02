@@ -1,15 +1,10 @@
 name: "Tracktor (Web UI)"
 slug: "tracktor"
-version: "edge-0.3.0"   # set whatever you prefer; your updater workflow can overwrite this
+version: "edge-0.3.0"
 description: "Self-hosted Tracktor (vehicle manager) packaged for Home Assistant."
 url: "https://github.com/javedh-dev/tracktor"
-# Optional: if you pin tags with a workflow, you can use:
-# changelog: "https://github.com/javedh-dev/tracktor/releases/tag/v{version}"
 
-arch:
-  - amd64
-  - aarch64
-
+arch: [amd64, aarch64]
 stage: "stable"
 startup: "application"
 init: false
@@ -17,7 +12,6 @@ panel_icon: "mdi:car"
 
 ingress: false
 webui: "http://[HOST]:[PORT:3000]/"
-
 ports:
   "3000/tcp": 5175
 ports_description:
@@ -29,12 +23,13 @@ map:
 
 options:
   TZ: "Europe/Vilnius"
-  APP_URL: ""          # optional base URL if the app supports it
-  ADMIN_EMAIL: ""      # optional seed (harmless if unsupported upstream)
-  ADMIN_PASSWORD: ""   # optional seed (harmless if unsupported upstream)
-
+  APP_URL: ""
+  PIN: ""                 # ← add this (4–8 digits is fine)
+  ADMIN_EMAIL: ""
+  ADMIN_PASSWORD: ""
 schema:
   TZ: str
   APP_URL: str?
+  PIN: str?               # ← add
   ADMIN_EMAIL: str?
   ADMIN_PASSWORD: str?
