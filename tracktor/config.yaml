@@ -1,7 +1,7 @@
-name: "Tracktor (from source)"
+name: "Tracktor (Web UI)"
 slug: "tracktor"
-version: "0.2.0"
-description: "Tracktor — Vehicle tracking/fuel/maintenance manager (builds from GitHub source)."
+version: "0.3.0-1"
+description: "Self-hosted Tracktor (vehicle manager) packaged for Home Assistant."
 url: "https://github.com/javedh-dev/tracktor"
 arch:
   - amd64
@@ -9,23 +9,27 @@ arch:
 startup: "application"
 init: false
 stage: "stable"
-ingress: false
 panel_icon: "mdi:car"
-webui: "http://[HOST]:[PORT:3000]/"
+ingress: false
+webui: "http://[HOST]:[PORT:5173]/"
 ports:
-  "3000/tcp": 3339
+  "5173/tcp": 5173
 ports_description:
-  "3000/tcp": "Tracktor Web UI (host port editable)"
-# Persisted storage is /data (provided by Supervisor). We also create symlinks so app writes there.
+  "5173/tcp": "Tracktor Web UI (host port editable)"
+map:
+  - type: data
+    read_only: false
+    # We'll keep DB and assets here:
+    # /data/tracktor/tracktor.sqlite
+    # /data/tracktor/uploads
 options:
   TZ: "Europe/Vilnius"
-  AUTH_PIN: ""
-  CORS_ORIGINS: ""
-  PUBLIC_API_BASE_URL: ""
-  GIT_REF: "dev"           # branch, tag, or commit to build
+  APP_URL: ""
+  # Optional: pre-create an admin user if upstream supports email/password seeding in future
+  ADMIN_EMAIL: ""
+  ADMIN_PASSWORD: ""
 schema:
-  TZ: str?
-  AUTH_PIN: str?
-  CORS_ORIGINS: str?
-  PUBLIC_API_BASE_URL: str?
-  GIT_REF: str?
+  TZ: str
+  APP_URL: str?
+  ADMIN_EMAIL: str?
+  ADMIN_PASSWORD: str?

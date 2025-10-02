@@ -1,53 +1,39 @@
-# syntax=docker/dockerfile:1
-
-############################
-# Build Stage
-############################
+# --- Builder stage: clone & build everything with devDependencies available ---
 FROM node:22-alpine AS build
-
-ARG GIT_REF=dev
-
-# Tools for native builds (e.g., sqlite3 bindings) during install
-RUN apk add --no-cache git python3 make g++
-
 WORKDIR /src
 
-# Clone upstream source
-RUN git clone --depth=1 -b "${GIT_REF}" https://github.com/javedh-dev/tracktor .
+# system deps sometimes used by node-gyp stacks
+RUN apk add --no-cache git python3 make g++
 
-# Install ALL deps incl. dev so TypeScript exists, then build (workspaces)
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci && npm run build
+# pull source (dev branch seems to be the default active branch upstream)
+# you can switch to a tag if you want reproducibility, e.g.: -b v0.3.0
+RUN git clone --depth=1 https://github.com/javedh-dev/tracktor . 
 
-# ***** IMPORTANT *****     # Backend expects frontend build entry at app/backend/frontend/handler.js     # Copy the entire frontend build output into that path so imports resolve.
-RUN set -eux; \
-    if [ -f app/frontend/build/handler.js ]; then \
-      mkdir -p app/backend/frontend; \
-      cp -a app/frontend/build/* app/backend/frontend/; \
-    else \
-      echo "WARN: app/frontend/build/handler.js not found; frontend may not have built"; \
-    fi
+# install workspaces + devDeps and build both backend + frontend if present
+# do NOT set NODE_ENV=production here; we need dev tools like tsc/tsx/drizzle-kit or sequelize-cli
+RUN corepack enable && npm ci
+RUN npm run build || true
 
-# Prune dev deps but keep compiled native modules
-RUN npm prune --omit=dev
-
-# Seed dependency used by backend seeders
-RUN npm install --omit=dev --no-save @faker-js/faker@latest
-
-############################
-# Runtime Stage
-############################
+# --- Runtime stage: small image with only built artifacts ---
 FROM node:22-alpine
-
-ENV NODE_ENV=production
 WORKDIR /opt/tracktor
 
-# Copy built app and pruned node_modules from build stage
-COPY --from=build /src ./
+# Copy the whole repository (built artifacts should be under /app/* or /dist/* depending on upstream)
+COPY --from=build /src /opt/tracktor
 
-# Add HA wrapper
+# Create runtime dirs for HA persistence
+RUN mkdir -p /data/tracktor /data/tracktor/uploads
+
+# Copy our HA wrapper
 COPY run.sh /run.sh
-RUN chmod +x /run.sh
+RUN sed -i 's/\r$//' /run.sh && chmod 0755 /run.sh
 
-EXPOSE 3000
-ENTRYPOINT ["/bin/sh","/run.sh"]
+# Default env (HA options.json will override)
+ENV NODE_ENV=production \
+    TZ=UTC
+
+# Expose the same port as in config.yaml
+EXPOSE 5173
+
+# Force our wrapper as the entrypoint so we can migrate/seed safely
+ENTRYPOINT ["/bin/sh", "/run.sh"]

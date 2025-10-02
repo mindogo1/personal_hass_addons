@@ -1,2 +1,0 @@
-Bump your add-on version in tracktor/config.yaml to: "0.2.1"
-Then reload the Add-on store and rebuild.
