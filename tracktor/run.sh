@@ -28,23 +28,44 @@ if [ ! -f "$DB_FILE" ]; then
   command -v sqlite3 >/dev/null 2>&1 && sqlite3 "$DB_FILE" 'VACUUM;' || true
 fi
 
-# Tracktor’s runtime works from build/backend and uses a relative ./tracktor.db
+# Tracktor often uses a relative ./tracktor.db. Point any such path at our persistent file.
+# Symlink in likely working directories if they exist.
+ROOT_DIR="/opt/tracktor"
 BACKEND_DIR="/opt/tracktor/build/backend"
-mkdir -p "$BACKEND_DIR"
-rm -f "$BACKEND_DIR/tracktor.db" 2>/dev/null || true
-ln -s "$DB_FILE" "$BACKEND_DIR/tracktor.db"
+
+ln -sf "$DB_FILE" "$ROOT_DIR/tracktor.db"
+mkdir -p "$BACKEND_DIR" 2>/dev/null || true
+ln -sf "$DB_FILE" "$BACKEND_DIR/tracktor.db" 2>/dev/null || true
 
 # Ensure all tooling points to the same file
 export DATABASE_URL="file:${DB_FILE}"
 echo "[tracktor-addon] Using database: $DB_FILE"
 echo "[tracktor-addon] Exposing server on :${PORT}"
 
-# ---- seed PIN (if provided) using app's own libs (bcryptjs + libsql)
-if [ -n "$PIN_VAL" ]; then
+# ---- ensure node/npm are available (they should be in node:22-alpine)
+if ! command -v node >/dev/null 2>&1; then
+  echo "[tracktor-addon] FATAL: node not found in PATH"; exit 1
+fi
+if ! command -v npm >/dev/null 2>&1; then
+  echo "[tracktor-addon] FATAL: npm not found in PATH"; exit 1
+fi
+
+# ---- seed PIN (if provided) using bcrypt; install libs on-the-fly if missing
+seed_pin() {
+  if [ -z "$PIN_VAL" ]; then
+    return 0
+  fi
+
   echo "[tracktor-addon] Seeding PIN…"
+  if ! node -e "require('bcryptjs'); require('@libsql/client');" 2>/dev/null; then
+    echo "[tracktor-addon] Installing bcryptjs and @libsql/client (one-time)…"
+    npm install --no-audit --no-fund --omit=dev bcryptjs @libsql/client || true
+  fi
+
   node <<'NODE' || true
     const bcrypt = require('bcryptjs');
     const libsql = require('@libsql/client');
+
     const pin = process.env.TRACKTOR_PIN || '';
     const url = process.env.DATABASE_URL || '';
     if (!pin || !url) process.exit(0);
@@ -67,12 +88,41 @@ if [ -n "$PIN_VAL" ]; then
       console.log("[tracktor-addon] PIN seeded/updated.");
     })().catch(e => {
       console.error("[tracktor-addon] PIN seed failed:", e?.message || e);
-      process.exit(0); // don't block app start
+      process.exit(0); // never block app start
     });
 NODE
-fi
+}
 export TRACKTOR_PIN="$PIN_VAL"
+seed_pin
 
-# ---- start the app (upstream build script runs migrations, then serves on 3000)
-echo "[tracktor-addon] Starting Tracktor…"
-exec npm start --prefix /opt/tracktor/build
+# ---- start the app (auto-detect)
+cd /opt/tracktor
+
+# Prefer npm start at repo root if defined
+if grep -q '"start"' package.json 2>/dev/null; then
+  echo "[tracktor-addon] Starting via npm start (repo root)…"
+  exec npm start
+fi
+
+# Else if build script exists, use it
+if [ -x ./build/start.sh ]; then
+  echo "[tracktor-addon] Starting via ./build/start.sh…"
+  exec ./build/start.sh
+fi
+
+# Else try a preview/dev server commonly used by Vite/SvelteKit
+if grep -q '"preview"' package.json 2>/dev/null; then
+  echo "[tracktor-addon] Starting via npm run preview…"
+  exec npm run preview -- --host 0.0.0.0 --port "$PORT"
+fi
+
+# Else try common Node entrypoints
+for CAND in ./app/backend/dist/index.js ./backend/dist/index.js ./dist/server/index.js ./server.js; do
+  if [ -f "$CAND" ]; then
+    echo "[tracktor-addon] Starting Node server: $CAND"
+    exec node "$CAND"
+  fi
+done
+
+echo "[tracktor-addon] No obvious start target; idling for debug."
+exec tail -f /dev/null
