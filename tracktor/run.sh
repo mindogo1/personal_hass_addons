@@ -1,144 +1,93 @@
 #!/bin/sh
 set -e
 
-OPT=/data/options.json
+OPT="/data/options.json"
 
-# --- helpers -----------------------------------------------------------
-get_json() {
+# --- tiny json reader for HA options (no jq in base images) ---
+get_opt() {
   key="$1"
   [ -f "$OPT" ] || { echo ""; return; }
   sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\"\\([^\"]*\\)\".*/\\1/p" "$OPT" | head -n1
 }
-has_node_mod () { [ -x "./node_modules/.bin/$1" ]; }
 
-# --- options → env -----------------------------------------------------
-TZ_VAL="$(get_json TZ)";           [ -n "$TZ_VAL" ] && export TZ="$TZ_VAL"
-APP_URL_VAL="$(get_json APP_URL)"; [ -n "$APP_URL_VAL" ] && export APP_URL="$APP_URL_VAL"
-ADMIN_EMAIL_VAL="$(get_json ADMIN_EMAIL)"; [ -n "$ADMIN_EMAIL_VAL" ] && export ADMIN_EMAIL="$ADMIN_EMAIL_VAL"
-ADMIN_PASSWORD_VAL="$(get_json ADMIN_PASSWORD)"; [ -n "$ADMIN_PASSWORD_VAL" ] && export ADMIN_PASSWORD="$ADMIN_PASSWORD_VAL"
+# --- read options ---
+TZ_VAL="$(get_opt TZ)"
+PIN_VAL="$(get_opt PIN)"
+PORT_VAL="$(get_opt PORT)"
 
-# Force expected listen interface/port (HA maps container 3000 → host XXXX)
-export HOST="${HOST:-0.0.0.0}"
-export PORT="${PORT:-3000}"
+[ -n "$TZ_VAL" ] && export TZ="$TZ_VAL"
+[ -n "$PORT_VAL" ] || PORT_VAL=3000
+export HOST=0.0.0.0
+export PORT="$PORT_VAL"
 
-# --- persistence -------------------------------------------------------
-DB_DIR="/data/tracktor"
-DB_FILE="$DB_DIR/tracktor.sqlite"
-UPLOADS_DIR="$DB_DIR/uploads"
+# --- persistence: single SQLite file under /data/tracktor ---
+DATA_DIR="/data/tracktor"
+DB_FILE="${DATA_DIR}/tracktor.sqlite"
+mkdir -p "$DATA_DIR"
 
-mkdir -p "$DB_DIR" "$UPLOADS_DIR"
-chmod 0775 "$DB_DIR" "$UPLOADS_DIR" || true
-
-# Many Tracktor builds default to ./tracktor.db under /opt/tracktor
-APP_DB_PATH="/opt/tracktor/tracktor.db"
-# Seed empty DB file if missing
-if [ ! -s "$DB_FILE" ]; then
-  echo "[tracktor-addon] Creating empty SQLite DB at $DB_FILE"
-  sqlite3 "$DB_FILE" 'VACUUM;' 2>/dev/null || true
-fi
-# Move any existing local DB into /data, then symlink back for the app
-if [ -f "$APP_DB_PATH" ] && [ ! -L "$APP_DB_PATH" ]; then
-  mv -f "$APP_DB_PATH" "$DB_FILE" 2>/dev/null || true
-fi
-ln -sf "$DB_FILE" "$APP_DB_PATH"
-
-# Some libs read DATABASE_URL or SQLITE DB path envs
-export SQLITE_DB_PATH="$DB_FILE"
-export DATABASE_URL="file:$DB_FILE"
-
-echo "[tracktor-addon] Database: $DB_FILE"
-
-# --- migrations --------------------------------------------------------
-cd /opt/tracktor
-
-# Prefer Sequelize migrations if present
-if has_node_mod sequelize || has_node_mod sequelize-cli; then
-  echo "[tracktor-addon] Running Sequelize migrations (if any)…"
-  npx --yes sequelize-cli db:migrate || true
+# Ensure DB exists (upstream will create if missing; harmless if already there)
+if [ ! -f "$DB_FILE" ]; then
+  echo "[tracktor-addon] Creating SQLite DB at $DB_FILE"
+  # If sqlite is present, init a valid file; otherwise app will create it at first connect
+  command -v sqlite3 >/dev/null 2>&1 && sqlite3 "$DB_FILE" 'VACUUM;' || true
 fi
 
-# Try Drizzle migrations if drizzle-kit + config exists
-if has_node_mod drizzle-kit; then
-  echo "[tracktor-addon] Running Drizzle push (if config present)…"
-  # Try common config names/paths
-  for CFG in drizzle.config.ts drizzle.config.mts drizzle.config.js drizzle.config.cjs app/backend/drizzle.config.* build/backend/drizzle.config.*; do
-    if [ -f "$CFG" ]; then
-      echo "Using $CFG"
-      DRIZZLE_CONFIG="$CFG" npx --yes drizzle-kit push || npx --yes drizzle-kit push:sqlite || true
-      break
-    fi
-  done
+# Tracktor's backend (per Docker method) runs from build/backend and uses ./tracktor.db (relative).
+# Symlink that path to our persistent file so app and seeder use the same DB.
+BACKEND_DIR="/opt/tracktor/build/backend"
+mkdir -p "$BACKEND_DIR"
+rm -f "$BACKEND_DIR/tracktor.db" 2>/dev/null || true
+ln -s "$DB_FILE" "$BACKEND_DIR/tracktor.db"
+
+# Also export DATABASE_URL for any internal tooling/migrations to hit the same file.
+export DATABASE_URL="file:${DB_FILE}"
+
+echo "[tracktor-addon] Using database: $DB_FILE"
+echo "[tracktor-addon] Exposing server on :${PORT}"
+
+# --- optional: seed PIN into 'auth' table so first login works ---
+if [ -n "$PIN_VAL" ]; then
+  echo "[tracktor-addon] Seeding PIN…"
+  # Use upstream libs present in the image so the hash format matches the app.
+  node <<'NODE' || true
+    const bcrypt = require('bcryptjs');
+    const libsql = require('@libsql/client');
+
+    const pin = process.env.TRACKTOR_PIN || '';
+    if (!pin) process.exit(0);
+
+    const url = process.env.DATABASE_URL || '';
+    if (!url) process.exit(0);
+
+    (async () => {
+      const db = libsql.createClient({ url });
+      // Minimal schema expected by backend
+      await db.execute(`
+        CREATE TABLE IF NOT EXISTS auth (
+          id INTEGER PRIMARY KEY,
+          hash TEXT NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      const hash = bcrypt.hashSync(pin, 10);
+      await db.execute(`
+        INSERT INTO auth (id, hash) VALUES (1, ?)
+        ON CONFLICT(id) DO UPDATE SET hash=excluded.hash, updated_at=CURRENT_TIMESTAMP;
+      `, [hash]);
+
+      console.log("[tracktor-addon] PIN seeded/updated.");
+    })().catch(e => {
+      console.error("[tracktor-addon] PIN seed failed:", e?.message || e);
+      process.exit(0); // never block app start
+    });
+NODE
 fi
+export TRACKTOR_PIN="$PIN_VAL"
 
-# Minimal fallback schema (prevents "no such table" crashes on first boot)
-if command -v sqlite3 >/dev/null 2>&1; then
-  TBL_COUNT="$(sqlite3 "$DB_FILE" '.tables' | wc -w | tr -d ' ')"
-  if [ "$TBL_COUNT" = "0" ] || [ -z "$TBL_COUNT" ]; then
-    echo "[tracktor-addon] Applying minimal fallback schema…"
-    sqlite3 "$DB_FILE" <<'SQL' || true
-CREATE TABLE IF NOT EXISTS configs (
-  key TEXT PRIMARY KEY,
-  value TEXT,
-  description TEXT,
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS auth (
-  id INTEGER PRIMARY KEY,
-  hash TEXT,
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-);
-SQL
-  fi
-else
-  echo "[tracktor-addon] sqlite3 not available; skipping fallback schema."
-fi
-
-# Optional admin seed (harmless if app ignores it)
-if [ -n "$ADMIN_EMAIL" ] && [ -n "$ADMIN_PASSWORD" ]; then
-  if command -v node >/dev/null 2>&1; then
-    node <<'JS' || true
-      import * as fs from 'fs';
-      const dbf = process.env.SQLITE_DB_PATH;
-      if (!dbf || !fs.existsSync(dbf)) process.exit(0);
-      const crypto = await import('crypto');
-      const sqlite3 = await import('sqlite3');
-      const { open } = await import('sqlite');
-      const hash = crypto.createHash('sha256').update(process.env.ADMIN_PASSWORD).digest('hex');
-      const db = await open({ filename: dbf, driver: sqlite3.Database });
-      await db.exec(`CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT UNIQUE,
-        password TEXT,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP
-      );`);
-      await db.run(`INSERT OR IGNORE INTO users(email,password) VALUES(?,?)`, [process.env.ADMIN_EMAIL, hash]);
-      await db.close();
-      console.log("[tracktor-addon] Admin seed attempted for", process.env.ADMIN_EMAIL);
-JS
-  fi
-fi
-
-echo "[tracktor-addon] Expecting app on ${HOST}:${PORT}"
-
-# --- start server ------------------------------------------------------
-# Prefer npm start if defined (many commits call ./build/start.sh inside)
-if grep -q '"start"' package.json 2>/dev/null; then
-  exec npm start
-fi
-
-# Else, if a start script exists in build dir
-if [ -x ./build/start.sh ]; then
-  exec ./build/start.sh
-fi
-
-# Else try common Node entrypoints
-for CAND in ./app/backend/dist/index.js ./dist/server/index.js ./server.js; do
-  if [ -f "$CAND" ]; then
-    exec node "$CAND"
-  fi
-done
-
-echo "[tracktor-addon] No obvious start target; idling for debug."
-exec tail -f /dev/null
+# --- start the app the same way the Docker guide does ---
+# Upstream Docker method runs the compiled app via the build scripts.
+# Their start script also runs migrations before serving.
+echo "[tracktor-addon] Starting Tracktor…"
+exec npm start --prefix /opt/tracktor/build

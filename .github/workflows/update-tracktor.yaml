@@ -1,62 +1,36 @@
-name: Update Tracktor (version + changelog + Dockerfile pin)
+name: Update Tracktor Version
 
 permissions:
   contents: write
 
 on:
   schedule:
-    - cron: "12 4 * * *"   # daily 04:12 UTC
-  workflow_dispatch:
+    - cron: "22 4 * * *"   # daily at 04:22 UTC
+  workflow_dispatch: {}
 
 jobs:
-  bump:
+  bump-version:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Check out repo
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          clean: true
 
-      - name: Probe upstream (release first, else head)
-        id: probe
+      - name: Fetch latest Tracktor release tag
+        id: get_tag
         run: |
           set -e
-          owner=javedh-dev
-          repo=tracktor
-
-          # Try latest release
-          rel_json=$(curl -s -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$owner/$repo/releases/latest")
-          tag=$(echo "$rel_json" | jq -r .tag_name)
-          if [ -n "$tag" ] && [ "$tag" != "null" ]; then
-            echo "mode=release" >> $GITHUB_OUTPUT
-            echo "raw_tag=$tag" >> $GITHUB_OUTPUT
-            echo "version=$tag" >> $GITHUB_OUTPUT
-            echo "changelog=https://github.com/$owner/$repo/releases/tag/$tag" >> $GITHUB_OUTPUT
+          tag=$(curl -s -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/javedh-dev/tracktor/releases/latest \
+            | jq -r .tag_name)
+          if [ -z "$tag" ] || [ "$tag" = "null" ]; then
+            echo "No release tag found; exiting without change."
             exit 0
           fi
+          echo "VERSION=$tag" >> $GITHUB_ENV
+          echo "Latest tag: $tag"
 
-          # Fallback to default branch HEAD
-          repo_json=$(curl -s -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$owner/$repo")
-          def_branch=$(echo "$repo_json" | jq -r .default_branch)
-          head_json=$(curl -s -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$owner/$repo/commits/$def_branch")
-          sha=$(echo "$head_json" | jq -r .sha)
-          sha7=$(echo "$sha" | cut -c1-7)
-
-          echo "mode=edge" >> $GITHUB_OUTPUT
-          echo "raw_tag=$def_branch" >> $GITHUB_OUTPUT
-          echo "version=edge-$sha7" >> $GITHUB_OUTPUT
-          echo "changelog=https://github.com/$owner/$repo/commit/$sha" >> $GITHUB_OUTPUT
-          echo "def_branch=$def_branch" >> $GITHUB_OUTPUT
-
-      - name: Sanity check files exist
-        run: |
-          test -f tracktor/config.yaml
-          test -f tracktor/Dockerfile
-
-      - name: Write version to tracktor/config.yaml (safe; drop dups)
-        env:
-          VERSION: ${{ steps.probe.outputs.version }}
+      - name: Bump version in tracktor/config.yaml (safe; drop duplicates)
+        if: env.VERSION != ''
         run: |
           set -e
           F="tracktor/config.yaml"
@@ -69,48 +43,11 @@ jobs:
             { print }
           ' "$F" > "$F.tmp" && mv "$F.tmp" "$F"
 
-      - name: Upsert changelog to exact upstream URL
-        env:
-          CHANGELOG: ${{ steps.probe.outputs.changelog }}
+      - name: Commit & push version bump
+        if: env.VERSION != ''
         run: |
-          set -e
-          F="tracktor/config.yaml"
-          if grep -q '^changelog:' "$F"; then
-            sed -i 's|^changelog:.*|changelog: "'"$CHANGELOG"'"|' "$F"
-          else
-            sed -i '1ichangelog: "'"$CHANGELOG"'"' "$F"
-          fi
-
-      - name: Pin Dockerfile clone to the selected ref
-        env:
-          MODE: ${{ steps.probe.outputs.mode }}
-          RAW_TAG: ${{ steps.probe.outputs.raw_tag }}
-          DEF_BRANCH: ${{ steps.probe.outputs.def_branch }}
-        run: |
-          set -e
-          F="tracktor/Dockerfile"
-
-          # We normalize the RUN git clone line to include "-b <ref>"
-          ref="$RAW_TAG"
-          [ -n "$ref" ] || ref="$DEF_BRANCH"
-
-          # Case 1: line already has "-b something" -> replace it
-          sed -i -E "s|^(RUN[[:space:]]+git clone --depth=1)[[:space:]]+-b[[:space:]]+[^[:space:]]+[[:space:]]+https://github.com/javedh-dev/tracktor[[:space:]]+\.$|\1 -b ${ref} https://github.com/javedh-dev/tracktor .|g" "$F"
-
-          # Case 2: line has no -b -> add it
-          sed -i -E "s|^(RUN[[:space:]]+git clone --depth=1)[[:space:]]+https://github.com/javedh-dev/tracktor[[:space:]]+\.$|\1 -b ${ref} https://github.com/javedh-dev/tracktor .|g" "$F"
-
-          echo "Pinned Dockerfile to ref: $ref"
-
-      - name: Commit & push
-        run: |
-          set -e
-          if [ -n "$(git status --porcelain tracktor/)" ]; then
-            git config --global user.name 'github-actions'
-            git config --global user.email 'actions@github.com'
-            git add tracktor/config.yaml tracktor/Dockerfile
-            git commit -m "chore(tracktor): bump to ${{ steps.probe.outputs.version }}"
-            git push
-          else
-            echo "No changes."
-          fi
+          git config --global user.name 'github-actions'
+          git config --global user.email 'actions@github.com'
+          git add tracktor/config.yaml
+          git diff --cached --quiet || git commit -m "chore(tracktor): bump to $VERSION"
+          git push
