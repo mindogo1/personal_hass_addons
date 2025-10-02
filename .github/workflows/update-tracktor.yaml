@@ -12,8 +12,7 @@ jobs:
   bump-version:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Fetch latest Tracktor release tag
         id: get_tag
@@ -23,13 +22,13 @@ jobs:
             https://api.github.com/repos/javedh-dev/tracktor/releases/latest \
             | jq -r .tag_name)
           if [ -z "$tag" ] || [ "$tag" = "null" ]; then
-            echo "No release tag found; exiting without change."
+            echo "No release tag found; exiting."
             exit 0
           fi
           echo "VERSION=$tag" >> $GITHUB_ENV
           echo "Latest tag: $tag"
 
-      - name: Bump version in tracktor/config.yaml (safe; drop duplicates)
+      - name: Bump version in config.yaml (safe; drop dups)
         if: env.VERSION != ''
         run: |
           set -e
@@ -43,11 +42,25 @@ jobs:
             { print }
           ' "$F" > "$F.tmp" && mv "$F.tmp" "$F"
 
-      - name: Commit & push version bump
+      - name: Pin Dockerfile to the same release
         if: env.VERSION != ''
         run: |
-          git config --global user.name 'github-actions'
-          git config --global user.email 'actions@github.com'
-          git add tracktor/config.yaml
-          git diff --cached --quiet || git commit -m "chore(tracktor): bump to $VERSION"
-          git push
+          set -e
+          F="tracktor/Dockerfile"
+          # replace an existing -b <something> clone to -b $VERSION
+          sed -i -E "s|(git clone --depth=1)([^#]*)(-b[[:space:]]+)[^[:space:]]+([[:space:]]+https://github.com/javedh-dev/tracktor .*?)|\\1\\2\\3${VERSION}\\4|" "$F"
+          # if no -b present, add it
+          sed -i -E "s|git clone --depth=1 https://github.com/javedh-dev/tracktor \\.|git clone --depth=1 -b ${VERSION} https://github.com/javedh-dev/tracktor .|" "$F"
+
+      - name: Commit & push
+        run: |
+          set -e
+          if [ -n "$(git status --porcelain tracktor/)" ]; then
+            git config --global user.name 'github-actions'
+            git config --global user.email 'actions@github.com'
+            git add tracktor/config.yaml tracktor/Dockerfile
+            git commit -m "chore(tracktor): bump to $VERSION"
+            git push
+          else
+            echo "No changes."
+          fi

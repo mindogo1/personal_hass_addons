@@ -1,8 +1,6 @@
 name: "Tracktor (Web UI)"
 slug: "tracktor"
-# This is what Home Assistant shows as the installed version.
-# The workflow below will keep this in sync with the upstream release tag.
-version: "v0.3.1"
+version: "v0.3.1"   # updater workflow will keep this in sync with upstream releases
 description: "Tracktor vehicle manager, packaged as a Home Assistant add-on."
 url: "https://github.com/javedh-dev/tracktor"
 changelog: "https://github.com/javedh-dev/tracktor/releases/tag/v{version}"
@@ -17,27 +15,22 @@ init: false
 panel_icon: "mdi:car"
 ingress: false
 
-# Tracktor listens on container port 3000 (Method 2).
+# Tracktor listens on container port 3000
 webui: "http://[HOST]:[PORT:3000]/"
-
-# Map container 3000 → any free host port; you can change the host side in HA UI.
 ports:
   "3000/tcp": 5175
 ports_description:
   "3000/tcp": "Tracktor Web UI (host port editable)"
 
-# Persist the SQLite DB under /data/tracktor
+# Persist DB under /data/tracktor
 map:
   - type: data
     read_only: false
-    # The wrapper keeps DB at /data/tracktor/tracktor.sqlite
 
 options:
   TZ: "Europe/Vilnius"
-  # Leave PIN empty to disable; set 4–12 digits to require a PIN at login.
-  PIN: ""
-  # Optional: override listening port (container-side). Normally leave 3000.
-  PORT: 3000
+  PIN: ""          # leave empty to disable; set 4–12 digits to require a PIN
+  PORT: 3000       # container-side port; leave 3000
 
 schema:
   TZ: str
