@@ -1,13 +1,10 @@
 name: "Tracktor (Web UI)"
 slug: "tracktor"
-version: "v0.3.1"   # updater workflow will keep this in sync with upstream releases
+version: "edge-dev"   # we’ll keep this updated via the workflow below
 description: "Tracktor vehicle manager, packaged as a Home Assistant add-on."
 url: "https://github.com/javedh-dev/tracktor"
-changelog: "https://github.com/javedh-dev/tracktor/releases/tag/v{version}"
-
-arch:
-  - amd64
-  - aarch64
+# (changelog is set by the workflow to the latest commit URL when on edge)
+arch: [amd64, aarch64]
 
 stage: "stable"
 startup: "application"
@@ -15,22 +12,20 @@ init: false
 panel_icon: "mdi:car"
 ingress: false
 
-# Tracktor listens on container port 3000
 webui: "http://[HOST]:[PORT:3000]/"
 ports:
   "3000/tcp": 5175
 ports_description:
   "3000/tcp": "Tracktor Web UI (host port editable)"
 
-# Persist DB under /data/tracktor
 map:
   - type: data
     read_only: false
 
 options:
   TZ: "Europe/Vilnius"
-  PIN: ""          # leave empty to disable; set 4–12 digits to require a PIN
-  PORT: 3000       # container-side port; leave 3000
+  PIN: ""       # set 4–12 digits to require a PIN
+  PORT: 3000
 
 schema:
   TZ: str

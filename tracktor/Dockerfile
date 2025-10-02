@@ -5,9 +5,9 @@ WORKDIR /src
 # native build tooling
 RUN apk add --no-cache git python3 make g++
 
-# pin to a release tag for reproducibility; the updater workflow rewrites this line
-# to the latest release (e.g. v0.3.1). If you want HEAD instead, drop "-b v0.3.1".
-RUN git clone --depth=1 -b v0.3.1 https://github.com/javedh-dev/tracktor .
+# Clone default branch (currently 'dev'). If you later want to pin a commit:
+# RUN git clone https://github.com/javedh-dev/tracktor . && git checkout <commit-sha>
+RUN git clone --depth=1 https://github.com/javedh-dev/tracktor .
 
 # install deps (including devDeps for build) and build
 RUN corepack enable && npm ci

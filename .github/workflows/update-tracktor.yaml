@@ -1,35 +1,38 @@
-name: Update Tracktor Version
+name: Update Tracktor (edge)
 
 permissions:
   contents: write
 
 on:
   schedule:
-    - cron: "22 4 * * *"   # daily at 04:22 UTC
+    - cron: "22 4 * * *"   # daily 04:22 UTC
   workflow_dispatch: {}
 
 jobs:
-  bump-version:
+  bump:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          clean: true
 
-      - name: Fetch latest Tracktor release tag
-        id: get_tag
+      - name: Probe default branch HEAD
+        id: head
         run: |
           set -e
-          tag=$(curl -s -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/javedh-dev/tracktor/releases/latest \
-            | jq -r .tag_name)
-          if [ -z "$tag" ] || [ "$tag" = "null" ]; then
-            echo "No release tag found; exiting."
-            exit 0
-          fi
-          echo "VERSION=$tag" >> $GITHUB_ENV
-          echo "Latest tag: $tag"
+          repo="javedh-dev/tracktor"
+          meta=$(curl -s -H "Accept: application/vnd.github+json" https://api.github.com/repos/$repo)
+          def=$(echo "$meta" | jq -r .default_branch)
+          commit=$(curl -s -H "Accept: application/vnd.github+json" https://api.github.com/repos/$repo/commits/$def)
+          sha=$(echo "$commit" | jq -r .sha)
+          sha7=$(echo "$sha" | cut -c1-7)
+          date=$(date -u +%Y%m%d)
+          echo "VERSION=edge-${date}-${sha7}" >> $GITHUB_ENV
+          echo "CHANGELOG=https://github.com/$repo/commit/$sha" >> $GITHUB_ENV
+          echo "Default: $def  SHA: $sha"
 
-      - name: Bump version in config.yaml (safe; drop dups)
-        if: env.VERSION != ''
+      - name: Write version in config.yaml (safe; drop dups)
         run: |
           set -e
           F="tracktor/config.yaml"
@@ -42,24 +45,24 @@ jobs:
             { print }
           ' "$F" > "$F.tmp" && mv "$F.tmp" "$F"
 
-      - name: Pin Dockerfile to the same release
-        if: env.VERSION != ''
+      - name: Upsert changelog to commit URL
         run: |
           set -e
-          F="tracktor/Dockerfile"
-          # replace an existing -b <something> clone to -b $VERSION
-          sed -i -E "s|(git clone --depth=1)([^#]*)(-b[[:space:]]+)[^[:space:]]+([[:space:]]+https://github.com/javedh-dev/tracktor .*?)|\\1\\2\\3${VERSION}\\4|" "$F"
-          # if no -b present, add it
-          sed -i -E "s|git clone --depth=1 https://github.com/javedh-dev/tracktor \\.|git clone --depth=1 -b ${VERSION} https://github.com/javedh-dev/tracktor .|" "$F"
+          F="tracktor/config.yaml"
+          if grep -q '^changelog:' "$F"; then
+            sed -i 's|^changelog:.*|changelog: "'"$CHANGELOG"'"|' "$F"
+          else
+            sed -i '1ichangelog: "'"$CHANGELOG"'"' "$F"
+          fi
 
       - name: Commit & push
         run: |
           set -e
-          if [ -n "$(git status --porcelain tracktor/)" ]; then
+          if [ -n "$(git status --porcelain tracktor/config.yaml)" ]; then
             git config --global user.name 'github-actions'
             git config --global user.email 'actions@github.com'
-            git add tracktor/config.yaml tracktor/Dockerfile
-            git commit -m "chore(tracktor): bump to $VERSION"
+            git add tracktor/config.yaml
+            git commit -m "chore(tracktor): ${VERSION}"
             git push
           else
             echo "No changes."
