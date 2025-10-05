@@ -1,7 +1,7 @@
 changelog: "https://github.com/javedh-dev/tracktor/commit/90e2b6783a75c4867f507069553bf56d23cfb440"
 name: "Tracktor (Web UI)"
 slug: "tracktor"
-version: "edge-20251004-90e2b67"
+version: "edge-20251005-90e2b67"
 description: "Tracktor vehicle manager, packaged as a Home Assistant add-on."
 url: "https://github.com/javedh-dev/tracktor"
 # changelog is updated by the edge workflow to point at the latest commit
