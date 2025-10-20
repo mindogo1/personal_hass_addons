@@ -3,29 +3,37 @@ set -euo pipefail
 
 OPT="/data/options.json"
 
-# tiny JSON getters (no jq)
+# --------- helpers ----------
 get_opt_str() {
   local key="$1"
   [[ -f "$OPT" ]] || { echo ""; return; }
-  sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\"\\([^\"]*\\)\".*/\\1/p" "$OPT" | head -n1
+  # Use PHP to safely read string keys
+  php -r '
+    $o = @json_decode(@file_get_contents("'"$OPT"'"), true);
+    if (is_array($o) && isset($o["'"$key"'"]) && is_string($o["'"$key"'"])) {
+      echo $o["'"$key"'"];
+    }
+  ' 2>/dev/null || true
 }
 
-get_opt_array_items() {
-  # Prints each string item from a JSON array key on its own line.
-  # Works even if the JSON is pretty-printed or has other arrays after it.
+get_opt_array() {
   local key="$1"
   [[ -f "$OPT" ]] || return 0
-  # Grab just the array for the key, then split out quoted items.
-  sed -n "/\"$key\"[[:space:]]*:/,/]/p" "$OPT" \
-    | tr -d '\n' \
-    | sed -nE "s/.*\"$key\"[[:space:]]*:\[[[:space:]]*([^]]*)[[:space:]]*].*/\1/p" \
-    | grep -o '"[^"]*"' | sed 's/^"//; s/"$//'
+  # Print each array item on its own line using PHP (robust for any whitespace/formatting)
+  php -r '
+    $o = @json_decode(@file_get_contents("'"$OPT"'"), true);
+    if (!is_array($o)) exit;
+    $arr = $o["'"$key"'"] ?? [];
+    if (!is_array($arr)) exit;
+    foreach ($arr as $v) {
+      if (is_string($v)) echo $v, PHP_EOL;
+    }
+  ' 2>/dev/null || true
 }
 
-# Map add-on options -> env Pi-hole expects
+# --------- map options to env Pi-hole expects ----------
 export TZ="$(get_opt_str TZ || true)"
 export WEBPASSWORD="$(get_opt_str WEBPASSWORD || true)"
-
 export DNSMASQ_LISTENING="$(get_opt_str DNSMASQ_LISTENING || true)"
 export ServerIP="$(get_opt_str ServerIP || true)"
 export FTLCONF_LOCAL_IPV4="$(get_opt_str FTLCONF_LOCAL_IPV4 || true)"
@@ -37,63 +45,46 @@ export CONDITIONAL_FORWARDING_IP="$(get_opt_str CONDITIONAL_FORWARDING_IP || tru
 export CONDITIONAL_FORWARDING_DOMAIN="$(get_opt_str CONDITIONAL_FORWARDING_DOMAIN || true)"
 export CONDITIONAL_FORWARDING_REVERSE="$(get_opt_str CONDITIONAL_FORWARDING_REVERSE || true)"
 
-# Persist Pi-hole state under /data so HA snapshots back it up
+# --------- persistence layout ----------
 DATA_BASE="/data/pihole"
 ETC_PIHOLE="${DATA_BASE}/etc-pihole"
 ETC_DNSMASQ="${DATA_BASE}/etc-dnsmasq.d"
-
 mkdir -p "${ETC_PIHOLE}" "${ETC_DNSMASQ}"
 
-# First run: copy any defaults, then replace with symlinks to persistent dirs
 if [[ -d /etc/pihole && ! -L /etc/pihole ]]; then
   shopt -s nullglob dotglob
-  if [[ -n "$(ls -A /etc/pihole)" ]]; then
-    cp -a /etc/pihole/. "${ETC_PIHOLE}/" || true
-  fi
+  [[ -n "$(ls -A /etc/pihole)" ]] && cp -a /etc/pihole/. "${ETC_PIHOLE}/" || true
   rm -rf /etc/pihole
 fi
 ln -sfn "${ETC_PIHOLE}" /etc/pihole
 
 if [[ -d /etc/dnsmasq.d && ! -L /etc/dnsmasq.d ]]; then
   shopt -s nullglob dotglob
-  if [[ -n "$(ls -A /etc/dnsmasq.d)" ]]; then
-    cp -a /etc/dnsmasq.d/. "${ETC_DNSMASQ}/" || true
-  fi
+  [[ -n "$(ls -A /etc/dnsmasq.d)" ]] && cp -a /etc/dnsmasq.d/. "${ETC_DNSMASQ}/" || true
   rm -rf /etc/dnsmasq.d
 fi
 ln -sfn "${ETC_DNSMASQ}" /etc/dnsmasq.d
 
-# ----- build wildcard rewrites file from options -----
+# --------- build wildcards file from config ----------
 WILDCARD_FILE="${ETC_DNSMASQ}/99-wildcards.conf"
-: > "$WILDCARD_FILE"   # truncate
+: > "$WILDCARD_FILE"
 
 wild_count=0
 while IFS= read -r item; do
-  # expected formats: "*.domain=IP", ".domain=IP", "domain=IP"
+  # Accept: "*.domain=IP" | ".domain=IP" | "domain=IP"
   domain="${item%%=*}"
   ip="${item#*=}"
-
-  # trim spaces
   domain="$(echo -n "$domain" | tr -d '[:space:]')"
   ip="$(echo -n "$ip" | tr -d '[:space:]')"
-
-  # drop only a leading "*." or "." if present
-  if [[ "$domain" == "*."* ]]; then
-    domain="${domain#*.}"
-  elif [[ "$domain" == "."* ]]; then
-    domain="${domain#.}"
+  [[ "$domain" == "*."* ]] && domain="${domain#*.}"
+  [[ "$domain" == "."* ]] && domain="${domain#.}"
+  if [[ -n "$domain" && -n "$ip" ]]; then
+    # write both accepted forms (either is enough, both remove ambiguity)
+    echo "address=/${domain}/${ip}"  >> "$WILDCARD_FILE"
+    echo "address=/.${domain}/${ip}" >> "$WILDCARD_FILE"
+    ((wild_count++)) || true
   fi
-
-  # skip invalids
-  if [[ -z "$domain" || -z "$ip" ]]; then
-    continue
-  fi
-
-  # write both accepted forms; either is enough, but both removes ambiguity
-  echo "address=/${domain}/${ip}"    >> "$WILDCARD_FILE"
-  echo "address=/.${domain}/${ip}"   >> "$WILDCARD_FILE"
-  ((wild_count++)) || true
-done < <(get_opt_array_items "WILDCARDS")
+done < <(get_opt_array "WILDCARDS")
 
 echo "[pihole-addon] Persisted dirs:"
 echo "  /etc/pihole    -> ${ETC_PIHOLE}"
@@ -102,22 +93,16 @@ echo "[pihole-addon] TZ=${TZ:-unset} DNSMASQ_LISTENING=${DNSMASQ_LISTENING:-unse
 echo "[pihole-addon] Wildcards written (${wild_count}) to ${WILDCARD_FILE}:"
 sed -n '1,200p' "$WILDCARD_FILE" || true
 
-# Handoff to upstream init (s6-overlay v2: /s6-init, v3: /init)
+# --------- handoff to upstream init (s6-overlay v2/v3) ----------
 if [ -x /s6-init ]; then
   exec /s6-init
 elif [ -x /init ]; then
   exec /init
 else
   echo "[pihole-addon] WARNING: No s6 init binary found. Starting services directly…"
-  if command -v pihole >/dev/null 2>&1; then
-    pihole -g || true
-  fi
-  if command -v pihole-FTL >/dev/null 2>&1; then
-    pihole-FTL no-daemon &
-  fi
-  if command -v lighttpd >/dev/null 2>&1; then
-    exec lighttpd -D -f /etc/lighttpd/lighttpd.conf
-  fi
+  command -v pihole >/dev/null 2>&1 && pihole -g || true
+  command -v pihole-FTL >/dev/null 2>&1 && pihole-FTL no-daemon &
+  command -v lighttpd   >/dev/null 2>&1 && exec lighttpd -D -f /etc/lighttpd/lighttpd.conf
   echo "[pihole-addon] No server binaries found. Idling for debug."
   exec tail -f /dev/null
 fi
