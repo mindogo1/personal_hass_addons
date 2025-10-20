@@ -56,5 +56,23 @@ echo "  /etc/pihole    -> ${ETC_PIHOLE}"
 echo "  /etc/dnsmasq.d -> ${ETC_DNSMASQ}"
 echo "[pihole-addon] TZ=${TZ:-unset} DNSMASQ_LISTENING=${DNSMASQ_LISTENING:-unset} ServerIP=${ServerIP:-${FTLCONF_LOCAL_IPV4:-unset}}"
 
-# Hand off to upstream init (starts lighttpd, pihole-FTL, etc.)
-exec /s6-init
+# Handoff to upstream init (s6-overlay v2: /s6-init, v3: /init)
+if [ -x /s6-init ]; then
+  exec /s6-init
+elif [ -x /init ]; then
+  exec /init
+else
+  echo "[pihole-addon] WARNING: No s6 init binary found. Starting services directly…"
+  # Best-effort fallback (rare)
+  if command -v pihole >/dev/null 2>&1; then
+    pihole -g || true
+  fi
+  if command -v pihole-FTL >/dev/null 2>&1; then
+    pihole-FTL no-daemon &
+  fi
+  if command -v lighttpd >/dev/null 2>&1; then
+    exec lighttpd -D -f /etc/lighttpd/lighttpd.conf
+  fi
+  echo "[pihole-addon] No server binaries found. Idling for debug."
+  exec tail -f /dev/null
+fi

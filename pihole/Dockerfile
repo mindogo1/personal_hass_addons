@@ -1,6 +1,6 @@
 FROM pihole/pihole:latest
 
-# Wrapper to set up HA persistence and env, then chain to upstream s6 init
+# Wrapper to set up HA persistence and env, then chain to upstream init
 COPY run.sh /run.sh
 RUN set -eux; \
     (sed -i '1s/^\xEF\xBB\xBF//' /run.sh || true); \
