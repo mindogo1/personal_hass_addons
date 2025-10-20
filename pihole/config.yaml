@@ -1,9 +1,9 @@
 name: "Pi-hole (Official)"
 slug: "pihole"
-version: "0.0.0"   # workflow can bump to latest Pi-hole core tag
+version: "vX.Y.Z"   # TEMP: put anything real here once, e.g. "v5.18.3"
 description: "Network-wide ad blocking via the official pihole/pihole container."
 url: "https://hub.docker.com/r/pihole/pihole"
-changelog: "https://github.com/pi-hole/pi-hole/releases/tag/v{version}"
+changelog: "https://github.com/pi-hole/pi-hole/releases/tag/{version}"
 stage: "stable"
 startup: "services"
 init: false
