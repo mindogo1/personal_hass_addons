@@ -3,32 +3,38 @@ set -euo pipefail
 
 OPT="/data/options.json"
 
-# --------- helpers ----------
+# --------- helpers (pure awk, no php/jq) ----------
 get_opt_str() {
   local key="$1"
   [[ -f "$OPT" ]] || { echo ""; return; }
-  # Use PHP to safely read string keys
-  php -r '
-    $o = @json_decode(@file_get_contents("'"$OPT"'"), true);
-    if (is_array($o) && isset($o["'"$key"'"]) && is_string($o["'"$key"'"])) {
-      echo $o["'"$key"'"];
+  awk -v k="\"$key\"" '
+    BEGIN{found=0}
+    $0 ~ k {
+      # match:   "KEY" :  "value"
+      if (match($0, "\"" key "\"[[:space:]]*:[[:space:]]*\"([^\"]*)\"", m)) { print m[1]; exit }
+      found=1
     }
-  ' 2>/dev/null || true
+    found && /^[[:space:]]*"/ { # handle value on next line
+      if (match($0, "\"([^\"]*)\"", m)) { print m[1]; exit }
+    }
+  ' key="$key" "$OPT"
 }
 
 get_opt_array() {
+  # print each string item in array key on its own line
   local key="$1"
   [[ -f "$OPT" ]] || return 0
-  # Print each array item on its own line using PHP (robust for any whitespace/formatting)
-  php -r '
-    $o = @json_decode(@file_get_contents("'"$OPT"'"), true);
-    if (!is_array($o)) exit;
-    $arr = $o["'"$key"'"] ?? [];
-    if (!is_array($arr)) exit;
-    foreach ($arr as $v) {
-      if (is_string($v)) echo $v, PHP_EOL;
+  awk -v key="$key" '
+    BEGIN{inarr=0}
+    $0 ~ "\"" key "\"[[:space:]]*:" { inarr=1; next }
+    inarr {
+      if ($0 ~ /\]/) { inarr=0; exit }
+      while (match($0, /"([^"]*)"/, m)) {
+        print m[1]
+        $0 = substr($0, RSTART+RLENGTH)
+      }
     }
-  ' 2>/dev/null || true
+  ' "$OPT"
 }
 
 # --------- map options to env Pi-hole expects ----------
@@ -77,9 +83,8 @@ while IFS= read -r item; do
   domain="$(echo -n "$domain" | tr -d '[:space:]')"
   ip="$(echo -n "$ip" | tr -d '[:space:]')"
   [[ "$domain" == "*."* ]] && domain="${domain#*.}"
-  [[ "$domain" == "."* ]] && domain="${domain#.}"
+  [[ "$domain" == "."*  ]] && domain="${domain#.}"
   if [[ -n "$domain" && -n "$ip" ]]; then
-    # write both accepted forms (either is enough, both remove ambiguity)
     echo "address=/${domain}/${ip}"  >> "$WILDCARD_FILE"
     echo "address=/.${domain}/${ip}" >> "$WILDCARD_FILE"
     ((wild_count++)) || true
@@ -89,7 +94,7 @@ done < <(get_opt_array "WILDCARDS")
 echo "[pihole-addon] Persisted dirs:"
 echo "  /etc/pihole    -> ${ETC_PIHOLE}"
 echo "  /etc/dnsmasq.d -> ${ETC_DNSMASQ}"
-echo "[pihole-addon] TZ=${TZ:-unset} DNSMASQ_LISTENING=${DNSMASQ_LISTENING:-unset} ServerIP=${ServerIP:-${FTLCONF_LOCAL_IPV4:-unset}}"
+echo "[pihole-addon] TZ=${TZ:-unset} DNSMASQ_LISTENING=${DNSMASQ_LISTENING:-unset} ServerIP=${ServerIP:-unset}"
 echo "[pihole-addon] Wildcards written (${wild_count}) to ${WILDCARD_FILE}:"
 sed -n '1,200p' "$WILDCARD_FILE" || true
 
