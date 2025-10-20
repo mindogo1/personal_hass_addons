@@ -1,6 +1,6 @@
 name: "Pi-hole (Official)"
 slug: "pihole"
-version: "0.0.0"   # workflow will bump to latest Pi-hole core tag
+version: "0.0.0"   # workflow can bump to latest Pi-hole core tag
 description: "Network-wide ad blocking via the official pihole/pihole container."
 url: "https://hub.docker.com/r/pihole/pihole"
 changelog: "https://github.com/pi-hole/pi-hole/releases/tag/v{version}"
@@ -10,14 +10,17 @@ init: false
 panel_icon: "mdi:shield-half-full"
 ingress: false
 
+# Shows the “OPEN WEB UI” button
+webui: "http://[HOST]:[PORT:9080]/"
+
 arch:
   - amd64
   - aarch64
 
 ports:
   "80/tcp": 9080
-  "53/tcp": 5353
-  "53/udp": 5353
+  "53/tcp": 53
+  "53/udp": 53
 #  "67/udp": 67   # DHCP (optional; requires host_network + NET_ADMIN)
 
 ports_description:
@@ -39,7 +42,7 @@ options:
   TZ: "Europe/Vilnius"
   WEBPASSWORD: ""
   DNSMASQ_LISTENING: "all"
-  ServerIP: ""                 # your HA host LAN IP (e.g. 192.168.1.10)
+  ServerIP: ""                 # your HA host LAN IP (e.g. 192.168.0.160)
   FTLCONF_LOCAL_IPV4: ""       # alternative to ServerIP
   PIHOLE_DNS_1: "1.1.1.1"
   PIHOLE_DNS_2: "1.0.0.1"
@@ -48,6 +51,12 @@ options:
   CONDITIONAL_FORWARDING_IP: ""
   CONDITIONAL_FORWARDING_DOMAIN: ""
   CONDITIONAL_FORWARDING_REVERSE: ""
+
+  # NEW: wildcard rewrites for dnsmasq/Pi-hole (optional)
+  # Entries like:
+  #   - "*.doggonet=192.168.0.160"
+  #   - "doggonet=192.168.0.160"
+  WILDCARDS: []
 
 schema:
   TZ: str
@@ -62,3 +71,5 @@ schema:
   CONDITIONAL_FORWARDING_IP: str?
   CONDITIONAL_FORWARDING_DOMAIN: str?
   CONDITIONAL_FORWARDING_REVERSE: str?
+  WILDCARDS:
+    - str?
