@@ -1,8 +1,9 @@
 name: "Pi-hole (Official)"
 slug: "pihole"
-version: "latest"
+version: "0.0.0"   # workflow will bump to the latest Pi-hole core release tag
 description: "Network-wide ad blocking via the official pihole/pihole container."
 url: "https://hub.docker.com/r/pihole/pihole"
+# HA shows the local CHANGELOG.md (written by the workflow). Keeping the URL is fine.
 changelog: "https://github.com/pi-hole/pi-hole/releases/tag/v{version}"
 stage: "stable"
 startup: "services"
@@ -14,11 +15,12 @@ arch:
   - amd64
   - aarch64
 
+# Web on 80; DNS on 53 TCP/UDP. Change host ports in the UI if needed.
 ports:
   "80/tcp": 9080
   "53/tcp": 5353
   "53/udp": 5353
-#  "67/udp": 67  # DHCP (optional; requires host_network + NET_ADMIN)
+#  "67/udp": 67   # DHCP (optional; see notes)
 
 ports_description:
   "80/tcp": "Pi-hole Web UI"
@@ -30,7 +32,7 @@ map:
   - type: data
     read_only: false
 
-# If you plan to use DHCP, you'll usually want:
+# For DHCP you’ll usually need:
 # host_network: true
 # privileged:
 #   - NET_ADMIN

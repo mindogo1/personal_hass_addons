@@ -1,0 +1,104 @@
+name: Update Pi-hole from tags (with changelog)
+
+permissions:
+  contents: write
+
+on:
+  schedule:
+    - cron: "7 4 * * *"     # daily 04:07 UTC
+  workflow_dispatch: {}
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Read previously applied tag
+      - name: Read previous tag
+        id: prev
+        run: |
+          if [ -f pihole/LAST_TAG ]; then
+            echo "prev_tag=$(cat pihole/LAST_TAG)" >> $GITHUB_OUTPUT
+          else
+            echo "prev_tag=" >> $GITHUB_OUTPUT
+          fi
+
+      # Get latest Pi-hole Core release tag (has notes)
+      - name: Get latest release tag
+        id: latest
+        run: |
+          set -e
+          REPO="pi-hole/pi-hole"
+          tag=$(curl -s -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${REPO}/releases/latest" | jq -r .tag_name)
+          if [ -z "$tag" ] || [ "$tag" = "null" ]; then
+            # Fallback to the newest tag
+            tag=$(curl -s -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${REPO}/tags?per_page=1" | jq -r '.[0].name')
+          fi
+          if [ -z "$tag" ] || [ "$tag" = "null" ]; then
+            echo "No tag found; exiting."; exit 0
+          fi
+          echo "tag=$tag" >> $GITHUB_OUTPUT
+
+      # Exit early if already on this tag
+      - name: Exit if no change
+        if: steps.prev.outputs.prev_tag == steps.latest.outputs.tag
+        run: echo "Already on ${{ steps.latest.outputs.tag }}; nothing to do."
+
+      # Fetch release notes for HA panel
+      - name: Fetch release notes
+        if: steps.prev.outputs.prev_tag != steps.latest.outputs.tag
+        run: |
+          set -e
+          REPO="pi-hole/pi-hole"
+          TAG="${{ steps.latest.outputs.tag }}"
+          body=$(curl -s -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${REPO}/releases/tags/${TAG}" | jq -r .body)
+          if [ -z "$body" ] || [ "$body" = "null" ]; then
+            body="(No release notes on GitHub for ${TAG})"
+          fi
+          printf "%s\n" "$body" > /tmp/release_body.md
+
+      # Update config.yaml version
+      - name: Update version in config.yaml
+        if: steps.prev.outputs.prev_tag != steps.latest.outputs.tag
+        run: |
+          set -e
+          V="${{ steps.latest.outputs.tag }}"
+          F="pihole/config.yaml"
+          awk -v V="$V" '
+            BEGIN{seen=0}
+            /^version:[[:space:]]*/{
+              if (!seen) { print "version: \"" V "\""; seen=1; next } else { next }
+            }
+            { print }
+          ' "$F" > "$F.tmp" && mv "$F.tmp" "$F"
+
+      # Write local CHANGELOG.md so HA shows real notes
+      - name: Write CHANGELOG.md
+        if: steps.prev.outputs.prev_tag != steps.latest.outputs.tag
+        run: |
+          set -e
+          V="${{ steps.latest.outputs.tag }}"
+          URL="https://github.com/pi-hole/pi-hole/releases/tag/${V}"
+          {
+            echo "# Pi-hole add-on"
+            echo
+            echo "## ${V}"
+            echo
+            cat /tmp/release_body.md
+            echo
+            echo "[View on GitHub](${URL})"
+          } > pihole/CHANGELOG.md
+          echo "${V}" > pihole/LAST_TAG
+
+      - name: Commit & push
+        if: steps.prev.outputs.prev_tag != steps.latest.outputs.tag
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add pihole/config.yaml pihole/CHANGELOG.md pihole/LAST_TAG
+          git commit -m "chore(pihole): bump to ${{ steps.latest.outputs.tag }}"
+          git push
