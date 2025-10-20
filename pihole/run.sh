@@ -70,21 +70,35 @@ while IFS= read -r item; do
   # expected formats: "*.domain=IP", ".domain=IP", "domain=IP"
   domain="${item%%=*}"
   ip="${item#*=}"
-  domain="${domain##*.}"     # remove leading "*." if present
-  domain="${domain#.}"       # remove leading "." if present
+
+  # trim spaces
   domain="$(echo -n "$domain" | tr -d '[:space:]')"
   ip="$(echo -n "$ip" | tr -d '[:space:]')"
-  if [[ -n "$domain" && -n "$ip" ]]; then
-    echo "address=/${domain}/${ip}" >> "$WILDCARD_FILE"
-    ((wild_count++)) || true
+
+  # drop only a leading "*." or "." if present
+  if [[ "$domain" == "*."* ]]; then
+    domain="${domain#*.}"
+  elif [[ "$domain" == "."* ]]; then
+    domain="${domain#.}"
   fi
+
+  # skip invalids
+  if [[ -z "$domain" || -z "$ip" ]]; then
+    continue
+  fi
+
+  # write both accepted forms; either is enough, but both removes ambiguity
+  echo "address=/${domain}/${ip}"    >> "$WILDCARD_FILE"
+  echo "address=/.${domain}/${ip}"   >> "$WILDCARD_FILE"
+  ((wild_count++)) || true
 done < <(get_opt_array_items "WILDCARDS")
 
 echo "[pihole-addon] Persisted dirs:"
 echo "  /etc/pihole    -> ${ETC_PIHOLE}"
 echo "  /etc/dnsmasq.d -> ${ETC_DNSMASQ}"
 echo "[pihole-addon] TZ=${TZ:-unset} DNSMASQ_LISTENING=${DNSMASQ_LISTENING:-unset} ServerIP=${ServerIP:-${FTLCONF_LOCAL_IPV4:-unset}}"
-echo "[pihole-addon] Wildcards written: ${wild_count} -> ${WILDCARD_FILE}"
+echo "[pihole-addon] Wildcards written (${wild_count}) to ${WILDCARD_FILE}:"
+sed -n '1,200p' "$WILDCARD_FILE" || true
 
 # Handoff to upstream init (s6-overlay v2: /s6-init, v3: /init)
 if [ -x /s6-init ]; then
@@ -93,7 +107,6 @@ elif [ -x /init ]; then
   exec /init
 else
   echo "[pihole-addon] WARNING: No s6 init binary found. Starting services directly…"
-  # Best-effort fallback (rare)
   if command -v pihole >/dev/null 2>&1; then
     pihole -g || true
   fi
