@@ -11,12 +11,14 @@ get_opt_str() {
 }
 
 get_opt_array_items() {
-  # prints each string item from a JSON array (e.g., ["a","b"]) on its own line
+  # Prints each string item from a JSON array key on its own line.
+  # Works even if the JSON is pretty-printed or has other arrays after it.
   local key="$1"
   [[ -f "$OPT" ]] || return 0
+  # Grab just the array for the key, then split out quoted items.
   sed -n "/\"$key\"[[:space:]]*:/,/]/p" "$OPT" \
     | tr -d '\n' \
-    | sed -n "s/.*\"$key\"[[:space:]]*:\[ *\(.*\) *].*/\1/p" \
+    | sed -nE "s/.*\"$key\"[[:space:]]*:\[[[:space:]]*([^]]*)[[:space:]]*].*/\1/p" \
     | grep -o '"[^"]*"' | sed 's/^"//; s/"$//'
 }
 
