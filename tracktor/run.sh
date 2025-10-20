@@ -29,7 +29,6 @@ if [ ! -f "$DB_FILE" ]; then
 fi
 
 # Tracktor often uses a relative ./tracktor.db. Point any such path at our persistent file.
-# Symlink in likely working directories if they exist.
 ROOT_DIR="/opt/tracktor"
 BACKEND_DIR="/opt/tracktor/build/backend"
 
@@ -41,14 +40,6 @@ ln -sf "$DB_FILE" "$BACKEND_DIR/tracktor.db" 2>/dev/null || true
 export DATABASE_URL="file:${DB_FILE}"
 echo "[tracktor-addon] Using database: $DB_FILE"
 echo "[tracktor-addon] Exposing server on :${PORT}"
-
-# ---- ensure node/npm are available (they should be in node:22-alpine)
-if ! command -v node >/dev/null 2>&1; then
-  echo "[tracktor-addon] FATAL: node not found in PATH"; exit 1
-fi
-if ! command -v npm >/dev/null 2>&1; then
-  echo "[tracktor-addon] FATAL: npm not found in PATH"; exit 1
-fi
 
 # ---- seed PIN (if provided) using bcrypt; install libs on-the-fly if missing
 seed_pin() {

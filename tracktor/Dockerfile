@@ -5,10 +5,10 @@ WORKDIR /src
 # native build tooling
 RUN apk add --no-cache git python3 make g++
 
-# Clone default branch (currently 'dev'). To pin a commit, add a checkout step.
+# NOTE: The workflow rewrites this line to:  git clone --depth=1 -b <tag> ...
 RUN git clone --depth=1 https://github.com/javedh-dev/tracktor .
 
-# Install deps (including devDeps for build) and build
+# install deps (including devDeps for build) and build
 RUN corepack enable && npm ci
 RUN npm run build || true
 
@@ -19,13 +19,13 @@ WORKDIR /opt/tracktor
 # sqlite CLI helps with first-run DB init and debugging
 RUN apk add --no-cache sqlite
 
-# Copy built app
+# copy built app
 COPY --from=build /src /opt/tracktor
 
-# Preinstall runtime libs used by our PIN seeder (safe if already present)
+# preinstall runtime libs used by the PIN seeder (safe if already present)
 RUN npm install --no-audit --no-fund --omit=dev bcryptjs @libsql/client || true
 
-# Our HA wrapper (handles DB path + PIN seeding + start)
+# our HA wrapper (handles DB path + PIN seeding + start)
 COPY run.sh /run.sh
 RUN sed -i 's/\r$//' /run.sh && chmod 0755 /run.sh
 

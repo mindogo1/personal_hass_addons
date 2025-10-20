@@ -1,0 +1,64 @@
+name: "Pi-hole (Official)"
+slug: "pihole"
+version: "latest"
+description: "Network-wide ad blocking via the official pihole/pihole container."
+url: "https://hub.docker.com/r/pihole/pihole"
+changelog: "https://github.com/pi-hole/pi-hole/releases/tag/v{version}"
+stage: "stable"
+startup: "services"
+init: false
+panel_icon: "mdi:shield-half-full"
+ingress: false
+
+arch:
+  - amd64
+  - aarch64
+
+ports:
+  "80/tcp": 9080
+  "53/tcp": 5353
+  "53/udp": 5353
+#  "67/udp": 67  # DHCP (optional; requires host_network + NET_ADMIN)
+
+ports_description:
+  "80/tcp": "Pi-hole Web UI"
+  "53/tcp": "DNS over TCP"
+  "53/udp": "DNS over UDP"
+#  "67/udp": "DHCP server (optional; requires host_network + NET_ADMIN)"
+
+map:
+  - type: data
+    read_only: false
+
+# If you plan to use DHCP, you'll usually want:
+# host_network: true
+# privileged:
+#   - NET_ADMIN
+
+options:
+  TZ: "Europe/Vilnius"
+  WEBPASSWORD: ""
+  DNSMASQ_LISTENING: "all"
+  ServerIP: ""                 # your HA host LAN IP (e.g. 192.168.1.10)
+  FTLCONF_LOCAL_IPV4: ""       # alternative to ServerIP
+  PIHOLE_DNS_1: "1.1.1.1"
+  PIHOLE_DNS_2: "1.0.0.1"
+  WEBTHEME: "default-dark"
+  CONDITIONAL_FORWARDING: "false"
+  CONDITIONAL_FORWARDING_IP: ""
+  CONDITIONAL_FORWARDING_DOMAIN: ""
+  CONDITIONAL_FORWARDING_REVERSE: ""
+
+schema:
+  TZ: str
+  WEBPASSWORD: str?
+  DNSMASQ_LISTENING: str?
+  ServerIP: str?
+  FTLCONF_LOCAL_IPV4: str?
+  PIHOLE_DNS_1: str?
+  PIHOLE_DNS_2: str?
+  WEBTHEME: str?
+  CONDITIONAL_FORWARDING: str?
+  CONDITIONAL_FORWARDING_IP: str?
+  CONDITIONAL_FORWARDING_DOMAIN: str?
+  CONDITIONAL_FORWARDING_REVERSE: str?
