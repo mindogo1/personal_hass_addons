@@ -1,0 +1,70 @@
+name: Update Pi-hole Version
+
+permissions:
+  contents: write
+
+on:
+  schedule:
+    - cron: "12 4 * * *"   # daily 04:12 UTC
+  workflow_dispatch: {}
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Get latest release tag; fall back to most recent tag if releases are empty
+      - name: Fetch latest tag
+        id: latest
+        run: |
+          set -e
+          LATEST=$(curl -s -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/pi-hole/pi-hole/releases/latest | jq -r .tag_name)
+          if [ -z "$LATEST" ] || [ "$LATEST" = "null" ]; then
+            LATEST=$(curl -s -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/pi-hole/pi-hole/tags?per_page=1" | jq -r '.[0].name')
+          fi
+          if [ -z "$LATEST" ] || [ "$LATEST" = "null" ]; then
+            echo "Could not determine latest tag"; exit 1
+          fi
+          echo "LATEST=$LATEST" >> $GITHUB_ENV
+          echo "Latest tag: $LATEST"
+
+      # Update version: replace the FIRST occurrence of 'version:' only
+      - name: Bump version in pihole/config.yaml
+        run: |
+          set -e
+          F="pihole/config.yaml"
+          awk -v V="${{ env.LATEST }}" '
+            BEGIN{done=0}
+            /^version:[[:space:]]*/ && !done { print "version: \"" V "\""; done=1; next }
+            { print }
+          ' "$F" > "$F.tmp" && mv "$F.tmp" "$F"
+
+      # Write a local CHANGELOG.md so HA shows real notes
+      - name: Write CHANGELOG.md
+        run: |
+          set -e
+          TAG="${{ env.LATEST }}"
+          BODY=$(curl -s -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/pi-hole/pi-hole/releases/tags/${TAG}" | jq -r .body)
+          [ -z "$BODY" -o "$BODY" = "null" ] && BODY="(No release notes for ${TAG})"
+          {
+            echo "# Pi-hole add-on"
+            echo
+            echo "## ${TAG}"
+            echo
+            printf "%s\n" "$BODY"
+            echo
+            echo "[View on GitHub](https://github.com/pi-hole/pi-hole/releases/tag/${TAG})"
+          } > pihole/CHANGELOG.md
+          echo "${TAG}" > pihole/LAST_TAG
+
+      - name: Commit & push
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add pihole/config.yaml pihole/CHANGELOG.md pihole/LAST_TAG
+          git diff --cached --quiet || git commit -m "chore(pihole): bump to ${{ env.LATEST }}"
+          git push
