@@ -3,39 +3,32 @@ set -e
 
 OPTS="/data/options.json"
 
-# tiny helpers (no jq in base image)
 get_json_string() {
   key="$1"
-  if [ -f "$OPTS" ]; then
-    sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\"\\([^\"]*\\)\".*/\\1/p" "$OPTS" | head -n1
-  fi
+  [ -f "$OPTS" ] && sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\"\\([^\"]*\\)\".*/\\1/p" "$OPTS" | head -n1
 }
 get_json_bool() {
   key="$1"
-  if [ -f "$OPTS" ]; then
-    sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\\(true\\|false\\).*/\\1/p" "$OPTS" | head -n1
-  fi
+  [ -f "$OPTS" ] && sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\\(true\\|false\\).*/\\1/p" "$OPTS" | head -n1
 }
 get_json_int() {
   key="$1"
-  if [ -f "$OPTS" ]; then
-    sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\\([0-9]\\+\\).*/\\1/p" "$OPTS" | head -n1
-  fi
+  [ -f "$OPTS" ] && sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\\([0-9]\\+\\).*/\\1/p" "$OPTS" | head -n1
 }
 
-# Map HA options → environment variables expected by BeaverHabits
+# Map HA options → env expected by BeaverHabits
 TZ_VAL="$(get_json_string TZ)"; [ -n "$TZ_VAL" ] && export TZ="$TZ_VAL"
-export HABITS_STORAGE="$(get_json_string HABITS_STORAGE || echo USER_DISK)"
+export HABITS_STORAGE="${HABITS_STORAGE:-$(get_json_string HABITS_STORAGE)}"
+[ -z "$HABITS_STORAGE" ] && HABITS_STORAGE="USER_DISK"
 export TRUSTED_LOCAL_EMAIL="$(get_json_string TRUSTED_LOCAL_EMAIL)"
 export ENABLE_IOS_STANDALONE="$(get_json_bool ENABLE_IOS_STANDALONE)"
 IDC="$(get_json_int INDEX_HABIT_DATE_COLUMNS)"; [ -n "$IDC" ] && export INDEX_HABIT_DATE_COLUMNS="$IDC"
 FDW="$(get_json_int FIRST_DAY_OF_WEEK)"; [ -n "$FDW" ] && export FIRST_DAY_OF_WEEK="$FDW"
 
-# Upstream stores user data at /app/.user (we persist this via add-on 'map')
+# Persisted data dir (matches upstream docs)
 DATA_DIR="/app/.user"
 mkdir -p "$DATA_DIR"
 
-# Make sure the runtime user can write (upstream container usually runs as 'nobody')
 detect_user() {
   for u in beaver nobody nginx www-data; do
     if id "$u" >/dev/null 2>&1; then echo "$u"; return; fi
@@ -48,25 +41,28 @@ RGID="$(id -g "$RUSER" 2>/dev/null || echo 65534)"
 chown -R "$RUID:$RGID" "$DATA_DIR" || true
 chmod -R 0775 "$DATA_DIR" || true
 
-# BeaverHabits listens on :8080 by default per upstream docs
+# Upstream listens on 8080
 export PORT="${PORT:-8080}"
 
 echo "[beaverhabits-addon] DATA_DIR=$DATA_DIR HABITS_STORAGE=$HABITS_STORAGE PORT=$PORT"
 
-# Chain to upstream start if present; otherwise try a Python module fallback
-if [ -x /start.sh ]; then
-  exec /start.sh
+# Chain to upstream start script even if not executable
+if [ -f /start.sh ]; then
+  echo "[beaverhabits-addon] Launching upstream /start.sh"
+  exec sh /start.sh
 fi
 
+# Fallback: try python module
 if command -v python3 >/dev/null 2>&1; then
   if python3 - <<'PY' >/dev/null 2>&1
 import importlib
 importlib.import_module("beaverhabits")
 PY
   then
+    echo "[beaverhabits-addon] Launching via python module"
     exec python3 -m beaverhabits
   fi
 fi
 
-echo "[beaverhabits-addon] Could not find upstream start command; idling for debug."
+echo "[beaverhabits-addon] No start command found. Idling…"
 exec tail -f /dev/null
