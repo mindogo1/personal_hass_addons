@@ -1,0 +1,43 @@
+name: "BeaverHabits (Web UI)"
+slug: "beaverhabits"
+description: "Beaver Habit Tracker — self-hosted habit tracking app."
+url: "https://github.com/daya0576/beaverhabits"
+changelog: "https://github.com/daya0576/beaverhabits/releases/tag/{version}"
+version: "v0.7.3"          # as of 2025-10-12
+stage: "stable"
+
+arch:
+  - amd64
+  - aarch64
+
+startup: "application"
+init: false
+panel_icon: "mdi:check-circle-outline"
+
+webui: "http://[HOST]:[PORT:8080]/"
+ports:
+  "8080/tcp": 8080
+ports_description:
+  "8080/tcp": "Web UI"
+
+# Persist BeaverHabits’ user data (matches upstream: /app/.user)
+map:
+  - type: addon_config
+    path: /app/.user
+    read_only: false
+
+options:
+  TZ: "Europe/Vilnius"
+  HABITS_STORAGE: "USER_DISK"      # or "DATABASE"
+  TRUSTED_LOCAL_EMAIL: ""          # e.g. you@example.com to skip auth for that email
+  INDEX_HABIT_DATE_COLUMNS: 5
+  ENABLE_IOS_STANDALONE: false
+  FIRST_DAY_OF_WEEK: 1             # 1=Monday .. 7=Sunday
+
+schema:
+  TZ: str
+  HABITS_STORAGE: list(USER_DISK|DATABASE)
+  TRUSTED_LOCAL_EMAIL: str?
+  INDEX_HABIT_DATE_COLUMNS: int?
+  ENABLE_IOS_STANDALONE: bool?
+  FIRST_DAY_OF_WEEK: int?

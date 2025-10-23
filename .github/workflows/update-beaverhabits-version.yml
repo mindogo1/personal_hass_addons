@@ -1,0 +1,42 @@
+name: Update BeaverHabits Version
+
+permissions:
+  contents: write
+
+on:
+  schedule:
+    - cron: '7 4 * * *'   # daily at 04:07 UTC
+  workflow_dispatch: {}
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fetch latest BeaverHabits release tag
+        id: get_tag
+        run: |
+          set -e
+          tag=$(curl -s -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/daya0576/beaverhabits/releases/latest \
+            | jq -r .tag_name)
+          echo "Latest tag: $tag"
+          [ -n "$tag" ] && [ "$tag" != "null" ]
+          echo "VERSION=$tag" >> $GITHUB_ENV
+
+      - name: Update config.yaml version (replace first version line only)
+        run: |
+          set -e
+          f="beaverhabits/config.yaml"
+          awk -v V="${{ env.VERSION }}" 'BEGIN{done=0} /^version:[[:space:]]*/{ if(!done){print "version: \"" V "\""; done=1; next} } {print}' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+
+      - name: Commit & push
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add beaverhabits/config.yaml
+          git diff --cached --quiet || git commit -m "chore(beaverhabits): bump to ${{ env.VERSION }}"
+          git push
