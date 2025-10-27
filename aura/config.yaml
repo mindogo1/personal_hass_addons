@@ -1,7 +1,7 @@
 name: "AURA (Mediux)"
 slug: "aura"
 # This will be auto-bumped by the workflow below to match upstream version.json
-version: "0.0.0"
+version: "null"
 description: "AURA — use Mediux image sets with Plex/Emby/Jellyfin."
 url: "https://mediux-team.github.io/AURA/"
 changelog: "https://github.com/mediux-team/AURA/commits/master"
