@@ -1,6 +1,6 @@
 name: "Pi-hole (Official)"
 slug: "pihole"
-version: "v6.1.4"
+version: "v6.2.1"
 description: "Network-wide ad blocking via the official pihole/pihole container."
 url: "https://hub.docker.com/r/pihole/pihole"
 changelog: "https://github.com/pi-hole/pi-hole/releases/tag/{version}"  # <-- no extra 'v'
