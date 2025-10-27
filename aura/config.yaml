@@ -1,6 +1,5 @@
 name: "AURA (Mediux)"
 slug: "aura"
-# This will be auto-bumped by the workflow below to match upstream version.json
 version: "v0.9.27"
 description: "AURA — use Mediux image sets with Plex/Emby/Jellyfin."
 url: "https://mediux-team.github.io/AURA/"
@@ -9,28 +8,35 @@ arch:
   - amd64
   - aarch64
 startup: "application"
-init: false
 stage: "stable"
+init: false
 panel_icon: "mdi:image-auto-adjust"
-webui: "http://[HOST]:[PORT:3000]/"
 
-# Expose AURA's ports (UI 3001, optional internal API 8888)
+# Upstream container
+image: "ghcr.io/mediux-team/aura:latest"
+
+# AURA listens on 3000 in the container; HA maps it to the host port you choose
+webui: "http://[HOST]:[PORT:3000]/"
 ports:
-  "3000/tcp": 3101
-  "8888/tcp": 8888
+  "3000/tcp": 3101        # <-- host 3101 → container 3000 (change host side if you want)
+  "8888/tcp": 8888        # optional API; remove if unused
 ports_description:
   "3000/tcp": "Web UI (AURA)"
   "8888/tcp": "AURA API (optional)"
 
+# Persist config and allow saving artwork alongside media
 map:
-  # Persist AURA configuration (/config inside container)
   - type: addon_config
     read_only: false
     path: /config
-  # Give AURA access to your HA /media for 'Save image next to content'
   - media:rw
 
-# Optional cosmetic/envs (AURA mostly configures itself via /config/config.yaml)
+# Force the app to bind to all interfaces and keep default container port
+environment:
+  HOST: "0.0.0.0"
+  PORT: "3000"
+
+# Optional cosmetic setting
 options:
   TZ: "Europe/Vilnius"
 schema:
