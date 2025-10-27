@@ -4,25 +4,23 @@ version: "v0.9.27"
 description: "AURA — use Mediux image sets with Plex/Emby/Jellyfin."
 url: "https://mediux-team.github.io/AURA/"
 changelog: "https://github.com/mediux-team/AURA/commits/master"
-
 arch:
   - amd64
   - aarch64
-
-startup: "application"
+startup: application
 init: false
-stage: "stable"
-panel_icon: "mdi:image-auto-adjust"
+stage: stable
+panel_icon: mdi:image-auto-adjust
 
+# Use the upstream image directly so its entrypoint/CMD run normally
+image: "ghcr.io/mediux-team/aura:latest"
+
+# AURA listens on 3000 in the container; map it to any free HOST port (e.g. 3101)
 webui: "http://[HOST]:[PORT:3000]/"
-
-# host 3101 → container 3000 (AURA UI). Remove 8888 if unused.
 ports:
   "3000/tcp": 3101
-  "8888/tcp": 8888
-ports_description:
-  "3000/tcp": "Web UI (AURA)"
-  "8888/tcp": "AURA API (optional)"
+# remove if you don't need the API
+# "8888/tcp": 8888
 
 map:
   - type: addon_config
