@@ -1,0 +1,3 @@
+build_from:
+  amd64: "docker.io/bellamy/wallos:latest"
+  aarch64: "docker.io/bellamy/wallos:latest"
