@@ -2,7 +2,7 @@ name: "AURA (Mediux)"
 slug: "aura"
 version: "0.0.0"
 description: "AURA — use Mediux image sets with Plex/Emby/Jellyfin."
-url: "https://mediux-team.github.io/AURA/"
+url: "https://github.com/mediux-team/AURA"
 changelog: "https://github.com/mediux-team/AURA/commits/master"
 
 arch:
@@ -14,20 +14,21 @@ init: false
 stage: stable
 panel_icon: mdi:image-auto-adjust
 
-# Use upstream prebuilt image so its entrypoint runs as intended
+# Use upstream image so its entrypoint starts normally
 image: "ghcr.io/mediux-team/aura:latest"
 
-# AURA listens on 3000 in the container; map to any free HOST port (e.g., 3101)
+# AURA listens on 3000 in the container; map to a free host port (3101)
 webui: "http://[HOST]:[PORT:3000]/"
 ports:
   "3000/tcp": 3101
+ports_description:
+  "3000/tcp": "Web UI (AURA)"
 
-# Keep it simple/valid: classic map syntax
+# Persist settings and allow saving beside media
 map:
-  - config:rw
+  - addon_config:rw
   - media:rw
 
-# Optional cosmetics
 options:
   TZ: "Europe/Vilnius"
 schema:
