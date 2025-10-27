@@ -1,56 +1,40 @@
-name: Update AURA Version
+name: "AURA (Mediux)"
+slug: "aura"
+version: "0.0.0"                   # your repo version; updater can bump this later
+description: "AURA — use Mediux image sets with Plex/Emby/Jellyfin."
+url: "https://mediux-team.github.io/AURA/"
+changelog: "https://github.com/mediux-team/AURA/commits/master"
+arch:
+  - amd64
+  - aarch64
+startup: application
+init: false
+stage: stable
+panel_icon: mdi:image-auto-adjust
 
-permissions:
-  contents: write
+# Point the HA Web UI button at whatever host-side port maps to container 3000.
+# [PORT:3000] automatically resolves to the host port you set below (e.g. 3101).
+webui: "http://[HOST]:[PORT:3000]/"
 
-on:
-  schedule:
-    - cron: '7 4 * * *'   # daily 04:07 UTC
-  workflow_dispatch: {}
+# AURA listens on 3000 (UI) and optionally 8888 (API) inside the container.
+# Map ONLY 3000 unless you plan to use the API.
+ports:
+  "3000/tcp": 3101       # change 3101 if you want a different host port
+# ports_description is optional
+ports_description:
+  "3000/tcp": "Web UI (AURA)"
 
-jobs:
-  bump-version:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+map:
+  - type: addon_config
+    read_only: false
+    path: /config
+  - media:rw                 # gives the container /media
 
-      - name: Get upstream version.json
-        id: getver
-        run: |
-          set -e
-          # Try master first; fall back to main just in case
-          for BR in master main; do
-            URL="https://raw.githubusercontent.com/mediux-team/AURA/${BR}/version.json"
-            if curl -fsSL "$URL" -o /tmp/version.json; then
-              break
-            fi
-          done
-          jq -r .version /tmp/version.json | tee /tmp/VERSION
-          echo "VERSION=$(cat /tmp/VERSION)" >> $GITHUB_ENV
-
-      - name: Show current & new versions
-        run: |
-          CUR=$(awk -F'"' '/^version:/ {print $2; exit}' aura/config.yaml || echo "0.0.0")
-          echo "Current config.yaml version: $CUR"
-          echo "Upstream version.json: $VERSION"
-
-      - name: Update config.yaml version (only first occurrence)
-        run: |
-          set -e
-          F="aura/config.yaml"
-          awk -v V="$VERSION" '
-            BEGIN{done=0}
-            /^version:[[:space:]]*"/ && done==0 { print "version: \"" V "\""; done=1; next }
-            { print }
-          ' "$F" > "$F.tmp"
-          mv "$F.tmp" "$F"
-
-      - name: Commit & push if changed
-        run: |
-          set -e
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add aura/config.yaml
-          git diff --cached --quiet || git commit -m "chore(aura): bump to ${VERSION}"
-          git push
+# Pass HOST so AURA binds to all interfaces.
+# (We’ll also handle /data/media below without replacing the image.)
+options:
+  TZ: "Europe/Vilnius"
+  HOST: "0.0.0.0"
+schema:
+  TZ: str
+  HOST: str?
