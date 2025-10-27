@@ -1,5 +1,6 @@
 ARG BUILD_FROM=ghcr.io/mediux-team/aura:latest
 FROM ${BUILD_FROM}
 
-# Make sure the app binds externally (not just 127.0.0.1)
-ENV HOST=0.0.0.0 PORT=3000 TZ=${TZ}
+# Ensure AURA binds externally and keeps its internal port
+ENV HOST=0.0.0.0
+ENV PORT=3000
