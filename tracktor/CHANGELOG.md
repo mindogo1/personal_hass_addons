@@ -1,17 +1,37 @@
 # Tracktor add-on
 
-## 0.3.18
+## 0.4.4
 
-## What's Changed
-* Update FUNDING.yml by @javedh-dev in https://github.com/javedh-dev/tracktor/pull/78
-* fix: allow 0$ maintenance cost (closes #82) by @BeneUX in https://github.com/javedh-dev/tracktor/pull/84
-* feat(fuel-log): add and retrieve fuel logs by license plate by @carloslp in https://github.com/javedh-dev/tracktor/pull/71
-* Release 0.3.0 by @javedh-dev in https://github.com/javedh-dev/tracktor/pull/88
+**Highlights:** 🚀 VIN display fix, vehicle images in cards, stronger backend logging & validation, tests added, and a breaking auth route rename.
 
-## New Contributors
-* @BeneUX made their first contribution in https://github.com/javedh-dev/tracktor/pull/84
-* @carloslp made their first contribution in https://github.com/javedh-dev/tracktor/pull/71
+**What's new**
+- 🖼️ Frontend: Vehicle images are now supported and displayed in the vehicle card — richer UI.
+- 🧾 Backend: Added structured logging using Winston for clearer, searchable logs.
+- ✅ Common: Multi-environment configuration added (dev/staging/prod) for safer deployments.
 
-**Full Changelog**: https://github.com/javedh-dev/tracktor/compare/0.2.2...0.3.0
+**Improvements**
+- 🔍 Frontend: Fixed VIN number display so VINs render correctly in the UI.
+- 🔁 Frontend: Added a fetch wrapper to standardize API calls (consistent error handling, headers, etc.).
+- 🏬 Frontend: Migrated to class-based stores for more consistent data fetching and state usage.
+- 🧰 Backend: Added data validation via a common wrapper at the route level (improves request validation & reduces duplicate code).
+- ↕️ Backend: Added secondary sort for fuel logs filled on the same day (stable, predictable ordering).
 
-[View on GitHub](https://github.com/javedh-dev/tracktor/releases/tag/0.3.18)
+**Testing**
+- 🧪 Frontend: Added frontend helper tests.
+- 🔬 Backend: Added backend API tests.
+
+**Breaking changes / Migration notes**
+- ⚠️ Backend: Auth route renamed from /api/pin to /api/auth — update any clients, integrations, or documentation to use /api/auth. This is a breaking change for consumers calling the old endpoint.
+
+**Developer / Ops notes**
+- 🔧 Logging: Winston configuration is in place — ensure log aggregation/forwarding is updated if you rely on a specific log format or transport.
+- ♻️ Validation: Route-level validation wrapper centralizes schema checks — review any custom per-route validation that may now be redundant.
+- 🌐 Environments: Multi-environment config requires environment-specific variables; verify CI/CD and deployment configs contain the new keys.
+
+**Recommended actions**
+- Update all clients/integrations to use /api/auth instead of /api/pin.
+- Verify logging/monitoring dashboards post-deploy (Winston format).
+- Run full regression focusing on vehicle cards (VIN and images) and fuel log ordering.
+- Confirm environment variables for each environment are present before deploying.
+
+[View on GitHub](https://github.com/javedh-dev/tracktor/releases/tag/0.4.4)
