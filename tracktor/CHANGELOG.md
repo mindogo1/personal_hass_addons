@@ -1,18 +1,48 @@
 # Tracktor add-on
 
-## 0.5.1
+## 1.0.1
 
-## What's Changed
-* Added Option to disable authentication by @javedh-dev in https://github.com/javedh-dev/tracktor/pull/110
-* Add support for Progressive Webapp by @javedh-dev in https://github.com/javedh-dev/tracktor/pull/111
-* Making VIN and LPN as non mandatory field and also adding required indicator on Form UI by @javedh-dev in https://github.com/javedh-dev/tracktor/pull/112
-* Implement dynamic odometer tracking and mileage calculation by @javedh-dev in https://github.com/javedh-dev/tracktor/pull/113
-* Added support for vehicle fuel type by @javedh-dev in https://github.com/javedh-dev/tracktor/pull/114
-* 0.5.x by @javedh-dev in https://github.com/javedh-dev/tracktor/pull/115
-* Show toast and log error on login failure by @javedh-dev in https://github.com/javedh-dev/tracktor/pull/116
-* Show toast and log error on login failure by @javedh-dev in https://github.com/javedh-dev/tracktor/pull/117
+# Release Notes – v1.0.0 (2025-12-17)
 
+## Major Changes
+- Migrated from separate backend/frontend to a full-stack SvelteKit app.
+- Switched package management from npm to pnpm.
+- Refactored middleware using the Chain of Responsibility pattern.
+- Removed extra controller layer and cleaned up middlewares.
+- Updated all shadcn UI components.
+- Removed SSR and improved UI.
+- Replaced common package APIResponse and updated imports.
+- Added user/password authentication (single user mode).
+- Added migration script and demo user seeding for auth.
+- Dropped legacy auth table and removed crypto dependency from frontend forms.
 
-**Full Changelog**: https://github.com/javedh-dev/tracktor/compare/0.4.4...0.5.0
+## Features & Improvements
+- Added support for attachments for all logs and entries.
+- Added alerts for expiry of PUCC and insurance.
+- Added functionality to export/import data in JSON format.
+- Added file upload limitation.
+- Added HTTP mode and defaulted logging requests as true.
+- Added preview for attached files and image upload improvements.
+- Added --host to preview command.
+- Created new Dockerfile and improved Docker support (fixed CORS).
+- Refactored environment variable handling (separate client/server).
+- Removed dotenvx dependency and updated build configuration.
+- Upgraded Node.js to 24 and pnpm to 10 in CI workflow.
+- Updated GitHub Actions and improved CI/CD.
 
-[View on GitHub](https://github.com/javedh-dev/tracktor/releases/tag/0.5.1)
+## Bug Fixes
+- Fixed data seeding and data table rendering issues.
+- Fixed warnings, linting issues, and broken components.
+- Fixed error in mileage calculation.
+- Fixed editing in attachment and form submitting issues.
+- Fixed broken env for demo mode and improved logging.
+- Fixed auth check and made auth single user.
+- Fixed loggings and added DB patch step in initialization.
+
+## Other
+- Removed tests and updated environment variables.
+- General cleanup and code quality improvements.
+
+For a full list of changes, see the [compare view](https://github.com/javedh-dev/tracktor/compare/0.5.1...1.0.0).
+
+[View on GitHub](https://github.com/javedh-dev/tracktor/releases/tag/1.0.1)
