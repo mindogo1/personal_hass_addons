@@ -1,6 +1,6 @@
 # Tracktor add-on
 
-## 1.0.1
+## 1.0.2
 
 # Release Notes – v1.0.0 (2025-12-17)
 
@@ -45,4 +45,4 @@
 
 For a full list of changes, see the [compare view](https://github.com/javedh-dev/tracktor/compare/0.5.1...1.0.0).
 
-[View on GitHub](https://github.com/javedh-dev/tracktor/releases/tag/1.0.1)
+[View on GitHub](https://github.com/javedh-dev/tracktor/releases/tag/1.0.2)
