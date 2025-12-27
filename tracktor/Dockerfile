@@ -14,10 +14,9 @@ RUN apk add --no-cache \
 # ---- install pnpm ----
 RUN npm install -g pnpm
 
-# ---- fetch Tracktor (idempotent for HA rebuilds) ----
-WORKDIR /opt
-RUN rm -rf tracktor \
- && git clone --depth=1 https://github.com/javedh-dev/tracktor tracktor
+WORKDIR /opt/tracktor
+RUN rm -rf /opt/tracktor/* /opt/tracktor/.[!.]* /opt/tracktor/..?* \
+ && git clone --depth=1 https://github.com/javedh-dev/tracktor .
 
 WORKDIR /opt/tracktor
 
