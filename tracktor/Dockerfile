@@ -1,37 +1,31 @@
-# ---------- Builder: fetch source and build ----------
-FROM node:22-alpine AS build
-WORKDIR /src
+ARG BUILD_FROM
+FROM ${BUILD_FROM}
 
-# native build tooling
-RUN apk add --no-cache git python3 make g++
+# ---- base deps ----
+RUN apk add --no-cache \
+  nodejs \
+  npm \
+  git \
+  bash \
+  sqlite \
+  ca-certificates \
+  curl
 
-# NOTE: The workflow rewrites this line to:  git clone --depth=1 -b <tag> ...
-RUN git clone --depth=1 https://github.com/javedh-dev/tracktor .
+# ---- install pnpm ----
+RUN npm install -g pnpm
 
-# install deps (including devDeps for build) and build
-RUN corepack enable && npm ci
-RUN npm run build || true
+# ---- fetch Tracktor (idempotent for HA rebuilds) ----
+WORKDIR /opt
+RUN rm -rf tracktor \
+ && git clone --depth=1 https://github.com/javedh-dev/tracktor tracktor
 
-# ---------- Runtime: slim Node + sqlite CLI ----------
-FROM node:22-alpine
 WORKDIR /opt/tracktor
 
-# sqlite CLI helps with first-run DB init and debugging
-RUN apk add --no-cache sqlite
+# ---- install deps (pnpm) ----
+RUN pnpm install --frozen-lockfile --prod
 
-# copy built app
-COPY --from=build /src /opt/tracktor
-
-# preinstall runtime libs used by the PIN seeder (safe if already present)
-RUN npm install --no-audit --no-fund --omit=dev bcryptjs @libsql/client || true
-
-# our HA wrapper (handles DB path + PIN seeding + start)
+# ---- runtime ----
 COPY run.sh /run.sh
-RUN sed -i 's/\r$//' /run.sh && chmod 0755 /run.sh
+RUN chmod +x /run.sh
 
-ENV NODE_ENV=production \
-    HOST=0.0.0.0 \
-    PORT=3000
-
-EXPOSE 3000
-ENTRYPOINT ["/bin/sh", "/run.sh"]
+CMD ["/run.sh"]
