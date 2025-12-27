@@ -18,6 +18,19 @@ PORT_VAL="$(get_opt PORT)"
 export HOST=0.0.0.0
 export PORT="$PORT_VAL"
 
+# Ensure uploads directory exists and is writable
+UPLOADS_DIR="/data/tracktor/uploads"
+APP_UPLOADS_DIR="/opt/tracktor/uploads"
+
+mkdir -p "$UPLOADS_DIR"
+chmod 775 "$UPLOADS_DIR"
+chown -R root:root "$UPLOADS_DIR" || true
+
+# Symlink into app if not already present
+if [ ! -e "$APP_UPLOADS_DIR" ]; then
+  ln -s "$UPLOADS_DIR" "$APP_UPLOADS_DIR"
+fi
+
 # ---- persistence: single SQLite file under /data/tracktor
 DATA_DIR="/data/tracktor"
 DB_FILE="${DATA_DIR}/tracktor.sqlite"
@@ -48,10 +61,10 @@ seed_pin() {
   fi
 
   echo "[tracktor-addon] Seeding PIN…"
-  if ! node -e "require('bcryptjs'); require('@libsql/client');" 2>/dev/null; then
-    echo "[tracktor-addon] Installing bcryptjs and @libsql/client (one-time)…"
-    npm install --no-audit --no-fund --omit=dev bcryptjs @libsql/client || true
-  fi
+if ! node -e "require('bcryptjs'); require('@libsql/client');" 2>/dev/null; then
+  echo "[tracktor-addon] WARNING: bcryptjs or @libsql/client missing. PIN seeding skipped."
+  return 0
+fi
 
   node <<'NODE' || true
     const bcrypt = require('bcryptjs');
@@ -90,9 +103,9 @@ seed_pin
 cd /opt/tracktor
 
 # Prefer npm start at repo root if defined
-if grep -q '"start"' package.json 2>/dev/null; then
-  echo "[tracktor-addon] Starting via npm start (repo root)…"
-  exec npm start
+if command -v pnpm >/dev/null 2>&1 && grep -q '"start"' package.json 2>/dev/null; then
+  echo "[tracktor-addon] Starting via pnpm start…"
+  exec pnpm start
 fi
 
 # Else if build script exists, use it
