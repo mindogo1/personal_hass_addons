@@ -1,15 +1,7 @@
-#!/command/with-contenv sh
-set -e
+#!/usr/bin/with-contenv sh
 
 echo "[tracktor-addon] Starting Tracktor…"
 
-# Ensure data dir exists
-mkdir -p /data/tracktor
+cd /opt/tracktor
 
-# Safety check (prevents silent crash loops)
-if [ ! -d "/opt/tracktor/build" ]; then
-  echo "[tracktor-addon] ERROR: build directory missing"
-  exit 1
-fi
-
-exec node /opt/tracktor/build
+exec node build/index.js

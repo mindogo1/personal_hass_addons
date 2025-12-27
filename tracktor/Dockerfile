@@ -1,50 +1,36 @@
-ARG BUILD_FROM=node:22-alpine
+ARG BUILD_FROM=ghcr.io/hassio-addons/base:14.0.2
+FROM ${BUILD_FROM}
 
-############################
-# Build stage
-############################
-FROM ${BUILD_FROM} AS build
+ARG TRACKTOR_VERSION=1.0.0
+
+ENV PNPM_HOME=/opt/pnpm
+ENV PATH=$PNPM_HOME:$PATH
 
 WORKDIR /opt/tracktor
 
-# Required build deps
-RUN apk add --no-cache git python3 make g++
-
-# Tracktor version (bump this when updating)
-ARG TRACKTOR_VERSION=1.0.2
-
-# Clean clone (important for HA rebuilds)
-RUN rm -rf /opt/tracktor/* /opt/tracktor/.[!.]* /opt/tracktor/..?* \
- && git clone --depth=1 --branch v${TRACKTOR_VERSION} https://github.com/javedh-dev/tracktor .
+# Dependencies
+RUN apk add --no-cache \
+    nodejs \
+    npm \
+    git \
+    python3 \
+    make \
+    g++
 
 # Enable pnpm
-RUN corepack enable \
- && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# Install deps & build
+# Clone Tracktor
+RUN git clone --branch v${TRACKTOR_VERSION} --depth=1 \
+    https://github.com/javedh-dev/tracktor.git .
+
+# Install deps + BUILD
 RUN pnpm install --frozen-lockfile \
- && pnpm build
+ && pnpm build \
+ && pnpm prune --prod
 
-
-############################
-# Runtime stage
-############################
-FROM node:22-alpine
-
-WORKDIR /opt/tracktor
-
-# Runtime deps only
-RUN apk add --no-cache sqlite tzdata
-
-# Copy built app
-COPY --from=build /opt/tracktor /opt/tracktor
-
-# Home Assistant data dir
-VOLUME ["/data"]
-
-ENV NODE_ENV=production
-ENV PORT=3000
-
-EXPOSE 3000
+# Copy run script
+COPY run.sh /run.sh
+RUN chmod +x /run.sh
 
 CMD ["/run.sh"]
