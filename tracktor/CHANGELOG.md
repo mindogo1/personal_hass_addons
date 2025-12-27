@@ -1,17 +1,48 @@
 # Tracktor add-on
 
-## 0.3.18
+## 1.0.2
 
-## What's Changed
-* Update FUNDING.yml by @javedh-dev in https://github.com/javedh-dev/tracktor/pull/78
-* fix: allow 0$ maintenance cost (closes #82) by @BeneUX in https://github.com/javedh-dev/tracktor/pull/84
-* feat(fuel-log): add and retrieve fuel logs by license plate by @carloslp in https://github.com/javedh-dev/tracktor/pull/71
-* Release 0.3.0 by @javedh-dev in https://github.com/javedh-dev/tracktor/pull/88
+# Release Notes – v1.0.0 (2025-12-17)
 
-## New Contributors
-* @BeneUX made their first contribution in https://github.com/javedh-dev/tracktor/pull/84
-* @carloslp made their first contribution in https://github.com/javedh-dev/tracktor/pull/71
+## Major Changes
+- Migrated from separate backend/frontend to a full-stack SvelteKit app.
+- Switched package management from npm to pnpm.
+- Refactored middleware using the Chain of Responsibility pattern.
+- Removed extra controller layer and cleaned up middlewares.
+- Updated all shadcn UI components.
+- Removed SSR and improved UI.
+- Replaced common package APIResponse and updated imports.
+- Added user/password authentication (single user mode).
+- Added migration script and demo user seeding for auth.
+- Dropped legacy auth table and removed crypto dependency from frontend forms.
 
-**Full Changelog**: https://github.com/javedh-dev/tracktor/compare/0.2.2...0.3.0
+## Features & Improvements
+- Added support for attachments for all logs and entries.
+- Added alerts for expiry of PUCC and insurance.
+- Added functionality to export/import data in JSON format.
+- Added file upload limitation.
+- Added HTTP mode and defaulted logging requests as true.
+- Added preview for attached files and image upload improvements.
+- Added --host to preview command.
+- Created new Dockerfile and improved Docker support (fixed CORS).
+- Refactored environment variable handling (separate client/server).
+- Removed dotenvx dependency and updated build configuration.
+- Upgraded Node.js to 24 and pnpm to 10 in CI workflow.
+- Updated GitHub Actions and improved CI/CD.
 
-[View on GitHub](https://github.com/javedh-dev/tracktor/releases/tag/0.3.18)
+## Bug Fixes
+- Fixed data seeding and data table rendering issues.
+- Fixed warnings, linting issues, and broken components.
+- Fixed error in mileage calculation.
+- Fixed editing in attachment and form submitting issues.
+- Fixed broken env for demo mode and improved logging.
+- Fixed auth check and made auth single user.
+- Fixed loggings and added DB patch step in initialization.
+
+## Other
+- Removed tests and updated environment variables.
+- General cleanup and code quality improvements.
+
+For a full list of changes, see the [compare view](https://github.com/javedh-dev/tracktor/compare/0.5.1...1.0.0).
+
+[View on GitHub](https://github.com/javedh-dev/tracktor/releases/tag/1.0.2)
