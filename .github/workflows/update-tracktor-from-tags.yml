@@ -1,9 +1,12 @@
-name: Tracktor addon update
+name: Update Tracktor from tags (with changelog)
+
+permissions:
+  contents: write
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: "0 3 * * *"
+    - cron: "17 4 * * *"      # daily 04:17 UTC
+  workflow_dispatch: {}
 
 jobs:
   bump:
@@ -11,14 +14,111 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Bump addon version
+      # Read previous tag (if any)
+      - name: Read previous tag
+        id: prev
         run: |
-          VERSION=$(date +'%Y.%m.%d')
-          sed -i "s/version:.*/version: \"$VERSION\"/" config.yaml
+          if [ -f tracktor/LAST_TAG ]; then
+            echo "prev_tag=$(cat tracktor/LAST_TAG)" >> $GITHUB_OUTPUT
+          else
+            echo "prev_tag=" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Commit & push
+      # Fetch latest released tag (prefer Releases; fall back to tags list)
+      - name: Get latest tag
+        id: latest
         run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git commit -am "Auto-update Tracktor ($VERSION)" || exit 0
+          set -e
+          REPO="javedh-dev/tracktor"
+
+          # Prefer Releases (provides body/notes)
+          tag=$(curl -s -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${REPO}/releases/latest" | jq -r .tag_name)
+
+          if [ -z "$tag" ] || [ "$tag" = "null" ]; then
+            # Fallback to the newest tag from the tags list
+            tag=$(curl -s -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${REPO}/tags?per_page=1" | jq -r '.[0].name')
+          fi
+
+          if [ -z "$tag" ] || [ "$tag" = "null" ]; then
+            echo "No tag found; exiting."; exit 0
+          fi
+
+          echo "tag=$tag" >> $GITHUB_OUTPUT
+
+      # Exit early if already on this tag
+      - name: Exit if no change
+        if: steps.prev.outputs.prev_tag == steps.latest.outputs.tag
+        run: echo "Already on ${{ steps.latest.outputs.tag }}; nothing to do."
+
+      # Fetch release notes for that tag (if they exist)
+      - name: Fetch release notes
+        if: steps.prev.outputs.prev_tag != steps.latest.outputs.tag
+        id: notes
+        run: |
+          set -e
+          REPO="javedh-dev/tracktor"
+          TAG="${{ steps.latest.outputs.tag }}"
+          body=$(curl -s -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${REPO}/releases/tags/${TAG}" | jq -r .body)
+          if [ -z "$body" ] || [ "$body" = "null" ]; then
+            body="(No release notes on GitHub for ${TAG})"
+          fi
+          printf "%s\n" "$body" > /tmp/release_body.md
+
+      # Update config.yaml version
+      - name: Update version in config.yaml
+        if: steps.prev.outputs.prev_tag != steps.latest.outputs.tag
+        run: |
+          set -e
+          V="${{ steps.latest.outputs.tag }}"
+          F="tracktor/config.yaml"
+          awk -v V="$V" '
+            BEGIN{seen=0}
+            /^version:[[:space:]]*/{
+              if (!seen) { print "version: \"" V "\""; seen=1; next } else { next }
+            }
+            { print }
+          ' "$F" > "$F.tmp" && mv "$F.tmp" "$F"
+
+      # Pin Dockerfile clone to that tag
+      - name: Pin Dockerfile to tag
+        if: steps.prev.outputs.prev_tag != steps.latest.outputs.tag
+        run: |
+          set -e
+          V="${{ steps.latest.outputs.tag }}"
+          F="tracktor/Dockerfile"
+          if grep -qE 'git clone .* -b ' "$F"; then
+            sed -i -E "s|(git clone[^#]* -b )[^\ ]+(\ https://github.com/javedh-dev/tracktor .)|\\1${V}\\2|" "$F"
+          else
+            sed -i -E "s|git clone --depth=1 https://github.com/javedh-dev/tracktor \.|git clone --depth=1 -b ${V} https://github.com/javedh-dev/tracktor .|" "$F"
+          fi
+
+      # Write local CHANGELOG.md so HA shows notes
+      - name: Write CHANGELOG.md for HA panel
+        if: steps.prev.outputs.prev_tag != steps.latest.outputs.tag
+        run: |
+          set -e
+          V="${{ steps.latest.outputs.tag }}"
+          URL="https://github.com/javedh-dev/tracktor/releases/tag/${V}"
+          {
+            echo "# Tracktor add-on"
+            echo
+            echo "## ${V}"
+            echo
+            cat /tmp/release_body.md
+            echo
+            echo "[View on GitHub](${URL})"
+          } > tracktor/CHANGELOG.md
+          echo "${V}" > tracktor/LAST_TAG
+
+      # Commit & push
+      - name: Commit & push
+        if: steps.prev.outputs.prev_tag != steps.latest.outputs.tag
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add tracktor/config.yaml tracktor/Dockerfile tracktor/CHANGELOG.md tracktor/LAST_TAG
+          git commit -m "chore(tracktor): bump to ${{ steps.latest.outputs.tag }}"
           git push
