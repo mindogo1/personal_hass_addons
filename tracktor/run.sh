@@ -1,12 +1,15 @@
-#!/usr/bin/with-contenv sh
+#!/command/with-contenv sh
 set -e
 
-DATA_DIR="/data/tracktor"
-DB="$DATA_DIR/tracktor.sqlite"
+echo "[tracktor-addon] Starting Tracktor…"
 
-mkdir -p "$DATA_DIR"
+# Ensure data dir exists
+mkdir -p /data/tracktor
 
-cd /opt/tracktor
+# Safety check (prevents silent crash loops)
+if [ ! -d "/opt/tracktor/build" ]; then
+  echo "[tracktor-addon] ERROR: build directory missing"
+  exit 1
+fi
 
-echo "[tracktor-addon] Starting Tracktor (pnpm)…"
-exec pnpm start
+exec node /opt/tracktor/build
