@@ -14,16 +14,15 @@ RUN apk add --no-cache \
     make \
     g++
 
-# Install pnpm the safe way (Alpine-compatible)
+# Install pnpm
 RUN npm install -g pnpm
 
-# Clone Tracktor (ALWAYS WORKS)
+# Clone Tracktor
 RUN git clone https://github.com/javedh-dev/tracktor.git .
 
-# Install + build
+# Install + build (DO NOT PRUNE)
 RUN pnpm install --frozen-lockfile \
- && pnpm build \
- && pnpm prune --prod
+ && pnpm build
 
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
