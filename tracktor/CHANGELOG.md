@@ -1,48 +1,106 @@
 # Tracktor add-on
 
-## 1.0.2
+## 1.1.0
 
-# Release Notes – v1.0.0 (2025-12-17)
+## Overview
 
-## Major Changes
-- Migrated from separate backend/frontend to a full-stack SvelteKit app.
-- Switched package management from npm to pnpm.
-- Refactored middleware using the Chain of Responsibility pattern.
-- Removed extra controller layer and cleaned up middlewares.
-- Updated all shadcn UI components.
-- Removed SSR and improved UI.
-- Replaced common package APIResponse and updated imports.
-- Added user/password authentication (single user mode).
-- Added migration script and demo user seeding for auth.
-- Dropped legacy auth table and removed crypto dependency from frontend forms.
+v1.1.0 introduces comprehensive internationalization (i18n) support across the entire application, enhanced customization capabilities, improved vehicle management, and significant UI/UX refinements. This release also includes important bug fixes and code quality improvements.
 
-## Features & Improvements
-- Added support for attachments for all logs and entries.
-- Added alerts for expiry of PUCC and insurance.
-- Added functionality to export/import data in JSON format.
-- Added file upload limitation.
-- Added HTTP mode and defaulted logging requests as true.
-- Added preview for attached files and image upload improvements.
-- Added --host to preview command.
-- Created new Dockerfile and improved Docker support (fixed CORS).
-- Refactored environment variable handling (separate client/server).
-- Removed dotenvx dependency and updated build configuration.
-- Upgraded Node.js to 24 and pnpm to 10 in CI workflow.
-- Updated GitHub Actions and improved CI/CD.
+## Major Features
 
-## Bug Fixes
-- Fixed data seeding and data table rendering issues.
-- Fixed warnings, linting issues, and broken components.
-- Fixed error in mileage calculation.
-- Fixed editing in attachment and form submitting issues.
-- Fixed broken env for demo mode and improved logging.
-- Fixed auth check and made auth single user.
-- Fixed loggings and added DB patch step in initialization.
+### Internationalization (i18n) & Localization Support
 
-## Other
-- Removed tests and updated environment variables.
-- General cleanup and code quality improvements.
+- Complete i18n infrastructure implementation for multilingual support
+- Localized messages across all UI components, forms, and notifications
+- Support for English, German, Spanish, French, and Hindi
+- Dynamic message functions for:
+  - Fuel types and fuel log management
+  - Recurrence and reminder labels
+  - Insurance and pollution certificate expiry alerts
+  - Maintenance and pollution tracking
+  - Custom field labels and descriptions
+  - Delete confirmation dialogs and form validations
+- Consistent localization across dashboard, settings, vehicle details, and all log management sections
 
-For a full list of changes, see the [compare view](https://github.com/javedh-dev/tracktor/compare/0.5.1...1.0.0).
+### Data Import & Recurrence Management
 
-[View on GitHub](https://github.com/javedh-dev/tracktor/releases/tag/1.0.2)
+- CSV file import support for bulk fuel log imports
+- Recurrence support for insurances, PUCC (Technical Examination), and reminders
+- Automated next due date calculation for insurances and pollution certificates
+- Enhanced tracking for recurring maintenance and compliance activities
+
+### Advanced Customization & Configuration System
+
+- Custom styling support with configurable CSS classes for UI elements
+- Feature flag system for granular enable/disable functionality across features
+- Configuration category management for organizing settings
+- Enhanced settings interface with tabbed structure for better organization
+- Support for custom fields in vehicles for extended data capture
+
+### Vehicle Management Enhancements
+
+- Image upload and management improvements with default image support
+- Option to remove existing vehicle images during edits
+- Proper image preservation and state management in forms
+- Enhanced vehicle details presentation with localized information
+
+### UI/UX Improvements
+
+- Mobile-optimized tab navigation with improved responsiveness
+- Improved file upload experience with refactored FileDropZone component
+- Better file preview functionality on mobile devices
+- Enhanced color consistency across VehicleCard, AppSheet, Header, and Notifications components
+- Reintroduced attachment field in FuelLogForm for better usability
+- Precomposed Apple touch icon for improved PWA experience
+
+## Bug Fixes & Improvements
+
+### Critical Fixes
+
+- Fixed authentication disabled issue preventing user login
+- Fixed critical bug preventing fuel log creation
+- Corrected file drop zone ID bug affecting file uploads
+
+### UI/UX Fixes
+
+- Fixed mobile file preview rendering issues
+- Improved form error handling and validation messaging
+- Enhanced error recovery in form submission handlers
+
+### Code Quality & Performance
+
+- Refactored addAction handlers to remove unnecessary parameters and reduce complexity
+- Refactored components to leverage localized message functions, improving maintainability
+- Removed unused FeatureGateExample component and unnecessary dashboard page
+- Updated all dependencies to latest stable versions
+- Improved app directory initialization on startup
+- Cleaned up environment variable configuration
+
+### DevOps & Infrastructure
+
+- Upgraded Docker Build-Push Action to v6 for improved CI/CD reliability
+- Enhanced Docker configuration and CORS handling
+
+## Technical Changes
+
+### Component & Architecture Refactoring
+
+- Updated FuelLogForm, FuelLogList, and FuelLogTab to use message localization
+- Refactored MaintenanceLogList, PollutionCertificateForm, and related components for localization
+- Enhanced AreaChart, CostChart, and MileageChart with localized titles
+- Improved Notifications component with localized notification text
+- Better separation of concerns with message functions handling all text content
+
+### Data Management
+
+- Refactored technical examination schema (previously separate, now integrated into recurrence support)
+- Improved database initialization process
+- Enhanced logging for better debugging and monitoring
+
+## Migration Notes
+
+- No breaking changes from v1.0.0
+- Existing data structures remain compatible
+- New localization system is transparent to users - application automatically uses system language preferences
+
+[View on GitHub](https://github.com/javedh-dev/tracktor/releases/tag/1.1.0)
