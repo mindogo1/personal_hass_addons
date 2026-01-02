@@ -8,20 +8,25 @@ WORKDIR /opt/tracktor
 # System dependencies
 RUN apk add --no-cache \
     nodejs \
+    npm \
     git \
     python3 \
     make \
-    g++ \
- && npm install -g pnpm
+    g++
 
-# Clone upstream
+# pnpm (build-time only)
+RUN npm install -g pnpm
+
+# Clone Tracktor (tag pinned by your updater)
 RUN git clone https://github.com/javedh-dev/tracktor.git .
 
-# Install deps + build ONCE
+# Install deps and build ONCE
 RUN pnpm install --frozen-lockfile \
  && pnpm build \
- && pnpm prune --prod
+ && pnpm prune --prod \
+ && npm uninstall -g pnpm
 
+# Runtime script
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 

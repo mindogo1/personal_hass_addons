@@ -1,68 +1,40 @@
 #!/bin/sh
 set -e
 
-OPT="/data/options.json"
+OPTIONS="/data/options.json"
 
 get_opt() {
-  key="$1"
-  sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\"\\([^\"]*\\)\".*/\\1/p" "$OPT" | head -n1
+  sed -n "s/.*\"$1\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" "$OPTIONS" 2>/dev/null | head -n1
 }
 
+# ---- Read HA options
 TZ_VAL="$(get_opt TZ)"
-PIN_VAL="$(get_opt PIN)"
 PORT_VAL="$(get_opt PORT)"
-
 [ -n "$TZ_VAL" ] && export TZ="$TZ_VAL"
 [ -z "$PORT_VAL" ] && PORT_VAL=3000
 
 export HOST=0.0.0.0
 export PORT="$PORT_VAL"
 
+# ---- Persistent paths
 DATA_DIR="/data/tracktor"
-DB_FILE="$DATA_DIR/tracktor.sqlite"
 UPLOADS_DIR="$DATA_DIR/uploads"
+DB_FILE="$DATA_DIR/tracktor.sqlite"
 
-APP_ROOT="/opt/tracktor"
-APP_UPLOADS="$APP_ROOT/uploads"
+mkdir -p "$UPLOADS_DIR"
+chmod 775 "$UPLOADS_DIR"
 
-mkdir -p "$DATA_DIR" "$UPLOADS_DIR"
+# ---- Database path (Tracktor supports DATABASE_URL)
+export DATABASE_URL="file:$DB_FILE"
 
-# ---- Database persistence
-ln -sf "$DB_FILE" "$APP_ROOT/tracktor.db"
+echo "[tracktor-addon] Data dir: $DATA_DIR"
+echo "[tracktor-addon] Uploads: $UPLOADS_DIR"
+echo "[tracktor-addon] DB: $DB_FILE"
+echo "[tracktor-addon] Port: $PORT"
 
-# ---- Uploads persistence
-if [ ! -e "$APP_UPLOADS" ]; then
-  ln -s "$UPLOADS_DIR" "$APP_UPLOADS"
-fi
+# ---- CRITICAL FIX ----
+# Force Tracktor to resolve *all relative paths* under /data
+cd "$DATA_DIR"
 
-# ---- Optional PIN seeding (no installs)
-if [ -n "$PIN_VAL" ]; then
-  export TRACKTOR_PIN="$PIN_VAL"
-  node <<'NODE'
-const bcrypt = require("bcryptjs");
-const { createClient } = require("@libsql/client");
-
-(async () => {
-  const db = createClient({ url: "file:/data/tracktor/tracktor.sqlite" });
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS auth (
-      id INTEGER PRIMARY KEY,
-      hash TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-  const hash = await bcrypt.hash(process.env.TRACKTOR_PIN, 10);
-  await db.execute({
-    sql: `INSERT INTO auth (id, hash)
-          VALUES (1, ?)
-          ON CONFLICT(id)
-          DO UPDATE SET hash=excluded.hash, updated_at=CURRENT_TIMESTAMP`,
-    args: [hash]
-  });
-})();
-NODE
-fi
-
-echo "[tracktor-addon] Starting Tracktor on port $PORT"
-exec pnpm start
+# ---- Start Tracktor (built output)
+exec node /opt/tracktor/build
