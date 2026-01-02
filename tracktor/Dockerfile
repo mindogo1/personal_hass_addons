@@ -5,7 +5,7 @@ ENV NODE_ENV=production
 
 WORKDIR /opt/tracktor
 
-# ---- build deps only
+# System deps
 RUN apk add --no-cache \
     nodejs \
     npm \
@@ -14,18 +14,16 @@ RUN apk add --no-cache \
     make \
     g++
 
-# pnpm is REQUIRED by Tracktor, but only for build
+# Install pnpm
 RUN npm install -g pnpm
 
-# Clone Tracktor (tag is pinned by your updater workflow)
+# Clone Tracktor
 RUN git clone https://github.com/javedh-dev/tracktor.git .
 
-# Build Tracktor
+# Install + build (DO NOT PRUNE)
 RUN pnpm install --frozen-lockfile \
- && pnpm build \
- && pnpm prune --prod
+ && pnpm build
 
-# Runtime entry
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 
