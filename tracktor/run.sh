@@ -1,34 +1,62 @@
-#!/usr/bin/with-contenv sh
+#!/bin/sh
 set -e
 
-# --- Persistence paths ---
-DATA_DIR="/data/tracktor"
-UPLOADS_DIR="${DATA_DIR}/uploads"
-APP_UPLOADS_DIR="/opt/tracktor/uploads"
+echo "[tracktor-addon] Initializing runtime"
 
-mkdir -p "${UPLOADS_DIR}"
-chmod 775 "${UPLOADS_DIR}"
+# ----------------------------
+# Persistent paths
+# ----------------------------
+DATA_ROOT="/data/tracktor"
+DB_FILE="${DATA_ROOT}/tracktor.db"
+UPLOADS_DIR="${DATA_ROOT}/uploads"
 
-# Ensure app sees uploads at ./uploads
-if [ -L "${APP_UPLOADS_DIR}" ]; then
-  # correct already
-  :
-elif [ -d "${APP_UPLOADS_DIR}" ]; then
-  # remove non-symlink dir created by image/build
-  rm -rf "${APP_UPLOADS_DIR}"
-  ln -s "${UPLOADS_DIR}" "${APP_UPLOADS_DIR}"
-else
-  ln -s "${UPLOADS_DIR}" "${APP_UPLOADS_DIR}"
+APP_ROOT="/opt/tracktor"
+APP_UPLOADS="${APP_ROOT}/uploads"
+
+# ----------------------------
+# Ensure persistence exists
+# ----------------------------
+mkdir -p "$DATA_ROOT"
+mkdir -p "$UPLOADS_DIR"
+
+chmod 755 "$DATA_ROOT"
+chmod 755 "$UPLOADS_DIR"
+
+# ----------------------------
+# Ensure uploads path matches app expectations
+# Tracktor writes to ./uploads (relative)
+# ----------------------------
+if [ -e "$APP_UPLOADS" ] && [ ! -L "$APP_UPLOADS" ]; then
+  rm -rf "$APP_UPLOADS"
+fi
+
+if [ ! -e "$APP_UPLOADS" ]; then
+  ln -s "$UPLOADS_DIR" "$APP_UPLOADS"
+fi
+
+# ----------------------------
+# Database handling
+# Tracktor uses DB_PATH
+# ----------------------------
+if [ ! -f "$DB_FILE" ]; then
+  echo "[tracktor-addon] Creating database file"
+  touch "$DB_FILE"
 fi
 
 export DB_PATH="$DB_FILE"
 export NODE_ENV="production"
-export HOST=0.0.0.0
-export PORT=3000
+export LOG_LEVEL="info"
 
 echo "[tracktor-addon] Database: $DB_PATH"
 echo "[tracktor-addon] Uploads:  $UPLOADS_DIR"
-echo "[tracktor-addon] Starting Tracktor"
 
-cd /opt/tracktor
-exec pnpm start
+# ----------------------------
+# Start Tracktor
+# IMPORTANT:
+# - MUST be run from /opt/tracktor
+# - MUST NOT use pnpm/npm at runtime
+# ----------------------------
+cd "$APP_ROOT"
+
+echo "[tracktor-addon] Starting Tracktor"
+exec node build
