@@ -1,39 +1,30 @@
-#!/bin/sh
-set -e
+ARG BUILD_FROM=ghcr.io/hassio-addons/base:14.0.2
+FROM ${BUILD_FROM}
 
-echo "[tracktor-addon] Initializing runtime"
+ENV NODE_ENV=production
 
-# ---- Paths
-DATA_DIR="/data/tracktor"
-DB_FILE="${DATA_DIR}/tracktor.sqlite"
-UPLOADS_DIR="${DATA_DIR}/uploads"
+WORKDIR /opt/tracktor
 
-APP_DIR="/opt/tracktor"
-APP_UPLOADS="${APP_DIR}/uploads"
+# System deps
+RUN apk add --no-cache \
+    nodejs \
+    npm \
+    git \
+    python3 \
+    make \
+    g++
 
-# ---- Ensure persistence dirs exist
-mkdir -p "$UPLOADS_DIR"
-mkdir -p "$DATA_DIR"
+# Install pnpm
+RUN npm install -g pnpm
 
-# ---- Symlink uploads into app (Tracktor expects ./uploads)
-if [ ! -e "$APP_UPLOADS" ]; then
-  ln -s "$UPLOADS_DIR" "$APP_UPLOADS"
-fi
+# Clone Tracktor
+RUN git clone https://github.com/javedh-dev/tracktor.git .
 
-# ---- Ensure DB file exists
-if [ ! -f "$DB_FILE" ]; then
-  echo "[tracktor-addon] Creating database"
-  sqlite3 "$DB_FILE" 'VACUUM;' || true
-fi
+# Install + build (DO NOT PRUNE)
+RUN pnpm install --frozen-lockfile \
+ && pnpm build
 
-# ---- Force Tracktor to use persistent DB
-export DATABASE_URL="file:${DB_FILE}"
-export HOST=0.0.0.0
-export PORT="${PORT:-3000}"
+COPY run.sh /run.sh
+RUN chmod +x /run.sh
 
-echo "[tracktor-addon] Database: $DB_FILE"
-echo "[tracktor-addon] Uploads:  $UPLOADS_DIR"
-echo "[tracktor-addon] Starting Tracktor"
-
-cd /opt/tracktor
-exec pnpm start
+CMD ["/run.sh"]
