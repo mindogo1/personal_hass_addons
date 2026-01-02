@@ -1,11 +1,25 @@
 #!/usr/bin/with-contenv sh
 set -e
 
+# --- Persistence paths ---
 DATA_DIR="/data/tracktor"
-DB_FILE="${DATA_DIR}/tracktor.db"
 UPLOADS_DIR="${DATA_DIR}/uploads"
+APP_UPLOADS_DIR="/opt/tracktor/uploads"
 
-mkdir -p "$UPLOADS_DIR"
+mkdir -p "${UPLOADS_DIR}"
+chmod 775 "${UPLOADS_DIR}"
+
+# Ensure app sees uploads at ./uploads
+if [ -L "${APP_UPLOADS_DIR}" ]; then
+  # correct already
+  :
+elif [ -d "${APP_UPLOADS_DIR}" ]; then
+  # remove non-symlink dir created by image/build
+  rm -rf "${APP_UPLOADS_DIR}"
+  ln -s "${UPLOADS_DIR}" "${APP_UPLOADS_DIR}"
+else
+  ln -s "${UPLOADS_DIR}" "${APP_UPLOADS_DIR}"
+fi
 
 export DB_PATH="$DB_FILE"
 export NODE_ENV="production"
