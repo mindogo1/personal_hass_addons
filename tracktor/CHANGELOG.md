@@ -1,106 +1,114 @@
 # Tracktor add-on
 
-## 1.1.0
+## 1.2.1
 
-## Overview
-
-v1.1.0 introduces comprehensive internationalization (i18n) support across the entire application, enhanced customization capabilities, improved vehicle management, and significant UI/UX refinements. This release also includes important bug fixes and code quality improvements.
+v1.2.0 brings significant enhancements to settings management, improved localization support with new languages, enhanced form flexibility, and better deployment capabilities. This release focuses on user customization, accessibility improvements, and making Tracktor more adaptable to diverse deployment scenarios and user preferences.
 
 ## Major Features
 
-### Internationalization (i18n) & Localization Support
+### Enhanced Settings Management
 
-- Complete i18n infrastructure implementation for multilingual support
-- Localized messages across all UI components, forms, and notifications
-- Support for English, German, Spanish, French, and Hindi
-- Dynamic message functions for:
-  - Fuel types and fuel log management
-  - Recurrence and reminder labels
-  - Insurance and pollution certificate expiry alerts
-  - Maintenance and pollution tracking
-  - Custom field labels and descriptions
-  - Delete confirmation dialogs and form validations
-- Consistent localization across dashboard, settings, vehicle details, and all log management sections
+- **Settings:** Comprehensive settings interface with organized configuration options
+- **Fuel Unit Configuration:** Configurable fuel units for different fuel types (CNG, LPG)
+- **Mileage Unit Formats:** Support for both distance-per-fuel (km/L, mpg) and fuel-per-distance (L/100km) display formats
+- **Auto-complete Inputs:** Improved form experience with auto-complete support for common fields
+- **Timezone Management:** Canonical IANA timezone list for consistent cross-platform time handling
 
-### Data Import & Recurrence Management
+### Expanded Internationalization Support
 
-- CSV file import support for bulk fuel log imports
-- Recurrence support for insurances, PUCC (Technical Examination), and reminders
-- Automated next due date calculation for insurances and pollution certificates
-- Enhanced tracking for recurring maintenance and compliance activities
+- **New Languages:**
+  - Italian (it) localization added with complete translations
+  - Hungarian (hu) localization support
+  - Arabic (ar) localization with RTL (Right-to-Left) support
+- **RTL Language Support:** Enhanced UI components to properly handle right-to-left languages
+- **Improved i18n Infrastructure:**
+  - Added `languageTags` and `sourceLanguageTag` to settings for better localization support
+  - Enhanced submit button with localized login button text
+  - Updated message handling across all forms and components
 
-### Advanced Customization & Configuration System
+### Flexible Data Input
 
-- Custom styling support with configurable CSS classes for UI elements
-- Feature flag system for granular enable/disable functionality across features
-- Configuration category management for organizing settings
-- Enhanced settings interface with tabbed structure for better organization
-- Support for custom fields in vehicles for extended data capture
+- **Optional Fields:** Made odometer and fuel volume optional in fuel logs for greater flexibility
+- **Extended Vehicle Years:** Updated vehicle year constraint to support vehicles from 1900 onwards
+- **Validation Improvements:** Auto-switch to tabs containing validation errors for better user feedback
 
-### Vehicle Management Enhancements
+### Deployment & Infrastructure
 
-- Image upload and management improvements with default image support
-- Option to remove existing vehicle images during edits
-- Proper image preservation and state management in forms
-- Enhanced vehicle details presentation with localized information
+- **Reverse Proxy Support:** Added base URL configuration for deployment behind reverse proxies
+- **Enhanced Documentation:** New comprehensive guide for reverse proxy deployment scenarios
 
-### UI/UX Improvements
+## UI/UX Improvements
 
-- Mobile-optimized tab navigation with improved responsiveness
-- Improved file upload experience with refactored FileDropZone component
-- Better file preview functionality on mobile devices
-- Enhanced color consistency across VehicleCard, AppSheet, Header, and Notifications components
-- Reintroduced attachment field in FuelLogForm for better usability
-- Precomposed Apple touch icon for improved PWA experience
+### Enhanced Components
+
+- **Pagination:** Added pagination ellipsis in AppTable component for improved navigation of large datasets
+- **Dialog Positioning:** Improved positioning and styling for dialog components and vehicle details modal
+- **Import Layout:** Refactored import button layout with enhanced loading state handling in FuelLogImportForm
+- **Form Feedback:** Better error messaging and auto-navigation to fields with validation errors
+
+### Styling & Accessibility
+
+- **RTL Language Support:** Proper text alignment and layout for right-to-left languages
+- **Consistent Formatting:** Improved submit button formatting across all forms
+- **Mobile Responsiveness:** Enhanced mobile experience for settings and configuration screens
 
 ## Bug Fixes & Improvements
 
 ### Critical Fixes
 
-- Fixed authentication disabled issue preventing user login
-- Fixed critical bug preventing fuel log creation
-- Corrected file drop zone ID bug affecting file uploads
+- Fixed localization support with proper language tag configuration
+- Corrected Italian translation typos in recurrence messages
+- Fixed formatting and linting issues across the codebase
 
-### UI/UX Fixes
+### Code Quality
 
-- Fixed mobile file preview rendering issues
-- Improved form error handling and validation messaging
-- Enhanced error recovery in form submission handlers
-
-### Code Quality & Performance
-
-- Refactored addAction handlers to remove unnecessary parameters and reduce complexity
-- Refactored components to leverage localized message functions, improving maintainability
-- Removed unused FeatureGateExample component and unnecessary dashboard page
-- Updated all dependencies to latest stable versions
-- Improved app directory initialization on startup
-- Cleaned up environment variable configuration
-
-### DevOps & Infrastructure
-
-- Upgraded Docker Build-Push Action to v6 for improved CI/CD reliability
-- Enhanced Docker configuration and CORS handling
+- Upgraded all dependencies to latest stable versions (performed twice during release cycle)
+- Removed unnecessary dependencies for improved bundle size
+- Fixed various formatting and linting errors for better code maintainability
+- Enhanced TypeScript type safety across components
 
 ## Technical Changes
 
-### Component & Architecture Refactoring
+### Database Migrations
 
-- Updated FuelLogForm, FuelLogList, and FuelLogTab to use message localization
-- Refactored MaintenanceLogList, PollutionCertificateForm, and related components for localization
-- Enhanced AreaChart, CostChart, and MileageChart with localized titles
-- Improved Notifications component with localized notification text
-- Better separation of concerns with message functions handling all text content
+- **20260120190621:** Made odometer and volume fields optional in fuel_logs table
+- **20260120190820:** Added configuration entries for:
+  - Mileage unit format (distance-per-fuel vs fuel-per-distance)
+  - LPG fuel unit configuration (litre)
+  - CNG fuel unit configuration (kilogram)
 
-### Data Management
+### Configuration System
 
-- Refactored technical examination schema (previously separate, now integrated into recurrence support)
-- Improved database initialization process
-- Enhanced logging for better debugging and monitoring
+- Enhanced settings schema to support fuel type-specific unit configurations
+- Added mileage display format preferences
+- Improved configuration category organization
+
+### Localization Files
+
+- Added complete Italian translation file (messages/it.json)
+- Added complete Hungarian translation file (messages/hu.json)
+- Updated Arabic translation file with RTL support enhancements
+- Fixed translation inconsistencies across all language files
 
 ## Migration Notes
 
-- No breaking changes from v1.0.0
-- Existing data structures remain compatible
-- New localization system is transparent to users - application automatically uses system language preferences
+- No breaking changes from v1.1.0
+- Optional fields in fuel logs maintain backward compatibility
+- New configuration entries are automatically seeded during migration
+- Existing data remains fully compatible with new optional field structure
 
-[View on GitHub](https://github.com/javedh-dev/tracktor/releases/tag/1.1.0)
+## Contributors
+
+Special thanks to:
+
+- @albanobattistella for Italian localization
+- @daunera for settings modal implementation and fuel unit configurations
+- All community members who reported issues and provided feedback
+
+## Known Issues
+
+- None reported at release time
+
+For detailed commit history, see the [compare view](https://github.com/javedh-dev/tracktor/compare/v1.1.0...v1.2.0).
+
+[View on GitHub](https://github.com/javedh-dev/tracktor/releases/tag/1.2.1)
