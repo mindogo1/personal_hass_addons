@@ -3,7 +3,7 @@ slug: "beaverhabits"
 description: "Beaver Habit Tracker — self-hosted habit tracking app."
 url: "https://github.com/daya0576/beaverhabits"
 changelog: "https://github.com/daya0576/beaverhabits/releases/tag/{version}"
-version: "v0.8.1"
+version: "v0.8.2"
 stage: "stable"
 
 arch:
