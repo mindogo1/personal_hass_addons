@@ -1,114 +1,135 @@
 # Tracktor add-on
 
-## 1.2.1
+## 1.3.1
 
-v1.2.0 brings significant enhancements to settings management, improved localization support with new languages, enhanced form flexibility, and better deployment capabilities. This release focuses on user customization, accessibility improvements, and making Tracktor more adaptable to diverse deployment scenarios and user preferences.
+## Overview
+
+v1.3.x focuses on the settings experience, notification delivery controls, clearer overview charts, and a broad cleanup of shared helpers and notification flows. It also improves demo seed data so mileage and cost trends look more realistic over time.
+
+## What's Changed
+* capitalize VIN and license plate automatically by @D3rJust1n in https://github.com/javedh-dev/tracktor/pull/169
+* Add Finnish (fi) localization by @pHamala in https://github.com/javedh-dev/tracktor/pull/181
+* feat: Remove duplicated English localization messages by @daunera in https://github.com/javedh-dev/tracktor/pull/176
+* Sort fuel and maintenance log by @DesignerThan95 in https://github.com/javedh-dev/tracktor/pull/184
+* refactor: Refactor hardcoded text to use i18n  by @daunera in https://github.com/javedh-dev/tracktor/pull/185
+* Added notification to different providers by @javedh-dev in https://github.com/javedh-dev/tracktor/pull/191
+* fix: Update email provider validation by @daunera in https://github.com/javedh-dev/tracktor/pull/193
+* Cleanup by @javedh-dev in https://github.com/javedh-dev/tracktor/pull/192
+* Release v1.3.0 by @javedh-dev in https://github.com/javedh-dev/tracktor/pull/194
 
 ## Major Features
 
-### Enhanced Settings Management
+### Settings UX Improvements
 
-- **Settings:** Comprehensive settings interface with organized configuration options
-- **Fuel Unit Configuration:** Configurable fuel units for different fuel types (CNG, LPG)
-- **Mileage Unit Formats:** Support for both distance-per-fuel (km/L, mpg) and fuel-per-distance (L/100km) display formats
-- **Auto-complete Inputs:** Improved form experience with auto-complete support for common fields
-- **Timezone Management:** Canonical IANA timezone list for consistent cross-platform time handling
+- Expanded all settings accordions by default for quicker access
+- Made settings forms more responsive with two- and three-column layouts where space allows
+- Added a compact switch-based style for feature flags
+- Updated notification provider forms to default new providers to enabled
+- Simplified channel subscription controls in the provider dialog
+- Extracted reusable settings sections, field helpers, and display blocks
+- Reused shared tab shell and form composition patterns in settings
 
-### Expanded Internationalization Support
+### Notification Delivery Controls
 
-- **New Languages:**
-  - Italian (it) localization added with complete translations
-  - Hungarian (hu) localization support
-  - Arabic (ar) localization with RTL (Right-to-Left) support
-- **RTL Language Support:** Enhanced UI components to properly handle right-to-left languages
-- **Improved i18n Infrastructure:**
-  - Added `languageTags` and `sourceLanguageTag` to settings for better localization support
-  - Enhanced submit button with localized login button text
-  - Updated message handling across all forms and components
+- Added a toggle to enable or disable scheduled notification delivery
+- Kept the delivery schedule tied to the notification settings state
+- Disabled schedule inputs automatically when scheduling is turned off
+- Added webhook and Gotify providers alongside email
+- Improved provider toggling, cron scheduling, and notification send templates
+- Allowed editing providers without exposing keys/tokens
 
-### Flexible Data Input
+### Overview Charts
 
-- **Optional Fields:** Made odometer and fuel volume optional in fuel logs for greater flexibility
-- **Extended Vehicle Years:** Updated vehicle year constraint to support vehicles from 1900 onwards
-- **Validation Improvements:** Auto-switch to tabs containing validation errors for better user feedback
+- Added an average reference line to mileage and cost graphs
+- Displayed the average as a top-right label with unit-aware formatting
+- Formatted tooltip values with the correct units for mileage and currency
+- Added a unit-aware average formatter for chart tooltips and labels
+- Improved the chart presentation with clearer dashed average lines
 
-### Deployment & Infrastructure
+### Demo Seed Data
 
-- **Reverse Proxy Support:** Added base URL configuration for deployment behind reverse proxies
-- **Enhanced Documentation:** New comprehensive guide for reverse proxy deployment scenarios
+- Updated seeded mileage values to progress more naturally over time
+- Added small mileage deviations and realistic fuel cost variation
+- Made the overall seed data better reflect real-world usage patterns
+- Refined seeded notifications and maintenance history for more natural trends
+
+## Configuration Changes
+
+- Added `notificationProcessingEnabled` to control scheduled notification delivery
+- Kept `notificationProcessingSchedule` as the cron expression for delivery timing
+- Added default config values for LPG and CNG fuel units
+- Preserved mileage unit format settings for distance-per-fuel and fuel-per-distance
+- Expanded settings schema and defaults for feature flags and notification delivery
+- Updated chart formatting helpers to support unit-aware mileage and currency display
+- Added shared config handling and merge helpers for notification provider settings
+- Seeded the new config entries automatically for demo setups
+
+## Environment/Runtime Changes
+
+- Demo seeding now generates more realistic mileage and cost trends
+- Notification scheduler respects the new enabled/disabled config state
+- Overview charts now format tooltip and average values using app units
+- The app now keeps chart and settings formatting aligned with the active locale/config
 
 ## UI/UX Improvements
 
-### Enhanced Components
+- Compact provider channel subscriptions in the add/edit provider dialog
+- Better chart labeling and readability in the overview section
+- More consistent settings layout across personalization, units, and feature flags
+- Better mobile behavior and tighter spacing across settings and dialogs
+- Improved loading skeletons and shared record card layouts across the UI
 
-- **Pagination:** Added pagination ellipsis in AppTable component for improved navigation of large datasets
-- **Dialog Positioning:** Improved positioning and styling for dialog components and vehicle details modal
-- **Import Layout:** Refactored import button layout with enhanced loading state handling in FuelLogImportForm
-- **Form Feedback:** Better error messaging and auto-navigation to fields with validation errors
+## Architecture & Shared Helpers
 
-### Styling & Accessibility
+- Consolidated route error helpers and standardized backend service responses
+- Added typed payload helpers for domain and service layers
+- Reduced shared store and form `any` usage
+- Extracted reusable table, skeleton, and formatter helpers
+- Reused shared resource state and feature card layouts across the UI
+- Improved notification provider config merge and service date helpers
+- Added helper reuse across vehicle, fuel, maintenance, insurance, and reminders
 
-- **RTL Language Support:** Proper text alignment and layout for right-to-left languages
-- **Consistent Formatting:** Improved submit button formatting across all forms
-- **Mobile Responsiveness:** Enhanced mobile experience for settings and configuration screens
+## Localization & Messaging
+
+- Continued moving hardcoded UI text into i18n message functions
+- Added or refined translated messages for settings, notifications, and charts
+- Improved localized labels across dashboard, forms, and notifications
+
+## Developer Experience
+
+- Added MCP support for the repo's Svelte workflow
+- Upgraded dependencies and fixed follow-up lint/check issues
+- Cleaned up formatting, typing, and shared abstractions across the codebase
 
 ## Bug Fixes & Improvements
 
-### Critical Fixes
-
-- Fixed localization support with proper language tag configuration
-- Corrected Italian translation typos in recurrence messages
-- Fixed formatting and linting issues across the codebase
-
-### Code Quality
-
-- Upgraded all dependencies to latest stable versions (performed twice during release cycle)
-- Removed unnecessary dependencies for improved bundle size
-- Fixed various formatting and linting errors for better code maintainability
-- Enhanced TypeScript type safety across components
-
-## Technical Changes
-
-### Database Migrations
-
-- **20260120190621:** Made odometer and volume fields optional in fuel_logs table
-- **20260120190820:** Added configuration entries for:
-  - Mileage unit format (distance-per-fuel vs fuel-per-distance)
-  - LPG fuel unit configuration (litre)
-  - CNG fuel unit configuration (kilogram)
-
-### Configuration System
-
-- Enhanced settings schema to support fuel type-specific unit configurations
-- Added mileage display format preferences
-- Improved configuration category organization
-
-### Localization Files
-
-- Added complete Italian translation file (messages/it.json)
-- Added complete Hungarian translation file (messages/hu.json)
-- Updated Arabic translation file with RTL support enhancements
-- Fixed translation inconsistencies across all language files
+- Fixed reactive binding issues in settings forms so inputs update correctly
+- Fixed notification delivery scheduling state so it no longer re-enables unexpectedly after save
+- Improved unit display for mileage and cost values in chart tooltips and labels
+- Fixed settings accordions to stay expanded by default
+- Fixed provider add/edit flow to keep new providers enabled by default
+- Fixed fuel and maintenance sorting when records share dates
+- Fixed NaN-prone calculations and lint issues carried over from refactors
 
 ## Migration Notes
 
-- No breaking changes from v1.1.0
-- Optional fields in fuel logs maintain backward compatibility
-- New configuration entries are automatically seeded during migration
-- Existing data remains fully compatible with new optional field structure
+- No breaking changes were introduced
+- Existing settings and data remain compatible
 
-## Contributors
+## Environment Variables
 
-Special thanks to:
-
-- @albanobattistella for Italian localization
-- @daunera for settings modal implementation and fuel unit configurations
-- All community members who reported issues and provided feedback
+- No new environment variables were required for this release
+- Existing runtime behavior continues to use the current app configuration and demo flags
 
 ## Known Issues
 
 - None reported at release time
 
-For detailed commit history, see the [compare view](https://github.com/javedh-dev/tracktor/compare/v1.1.0...v1.2.0).
+## New Contributors
+* @D3rJust1n made their first contribution in https://github.com/javedh-dev/tracktor/pull/169
+* @pHamala made their first contribution in https://github.com/javedh-dev/tracktor/pull/181
+* @DesignerThan95 made their first contribution in https://github.com/javedh-dev/tracktor/pull/184
 
-[View on GitHub](https://github.com/javedh-dev/tracktor/releases/tag/1.2.1)
+**Full Changelog**: https://github.com/javedh-dev/tracktor/compare/1.2.1...1.3.0
+
+[View on GitHub](https://github.com/javedh-dev/tracktor/releases/tag/1.3.1)
