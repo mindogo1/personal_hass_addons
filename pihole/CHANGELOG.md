@@ -1,19 +1,24 @@
 # Pi-hole add-on
 
-## v6.4
+## v6.4.1
 
 <!-- Release notes generated using configuration in .github/release.yml at development -->
 
 ## What's Changed
-* Remove wget from alpine dependencies by @darkexplosiveqwx in https://github.com/pi-hole/pi-hole/pull/6484
-* Remove custom FTL FirewallD zone checks from debug log by @rdwebdesign in https://github.com/pi-hole/pi-hole/pull/6481
-* Add Alpine 3.23 to test suite by @yubiuser in https://github.com/pi-hole/pi-hole/pull/6488
-* Debug log - Add colors to gravity tables by @rdwebdesign in https://github.com/pi-hole/pi-hole/pull/6485
-* Use configured location for web repo when updating or repairing by @rrobgill in https://github.com/pi-hole/pi-hole/pull/6470
-* Add missing `-g` to the message in gravity recovery command by @rdwebdesign in https://github.com/pi-hole/pi-hole/pull/6513
-* Don't install unused /usr/local/share/man/man5 by @darkexplosiveqwx in https://github.com/pi-hole/pi-hole/pull/6526
+* Remove additional ':' from debug log system time output by @yubiuser in https://github.com/pi-hole/pi-hole/pull/6551
+* Remove `readonly` from piholeNetworkFlush.sh to avoid error message by @rdwebdesign in https://github.com/pi-hole/pi-hole/pull/6554
+* Add antigravity index by @DL6ER in https://github.com/pi-hole/pi-hole/pull/6573
+* Fix return status capture of FTL check_download exists by @yubiuser in https://github.com/pi-hole/pi-hole/pull/6572
+* Remove misleading TODO comment for SetWebPassword by @10adnan75 in https://github.com/pi-hole/pi-hole/pull/6531
 
+## Security Advisories
 
-**Full Changelog**: https://github.com/pi-hole/pi-hole/compare/v6.3...v6.4
+* [GHSA-c935-8g63-qp74 – Local Privilege Escalation](https://github.com/pi-hole/pi-hole/security/advisories/GHSA-c935-8g63-qp74) reported by @smittix
 
-[View on GitHub](https://github.com/pi-hole/pi-hole/releases/tag/v6.4)
+## New Contributors
+* @10adnan75 made their first contribution in https://github.com/pi-hole/pi-hole/pull/6531
+* @Copilot made their first contribution in https://github.com/pi-hole/pi-hole/pull/6580
+
+**Full Changelog**: https://github.com/pi-hole/pi-hole/compare/v6.4...v6.4.1
+
+[View on GitHub](https://github.com/pi-hole/pi-hole/releases/tag/v6.4.1)
