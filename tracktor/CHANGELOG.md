@@ -1,6 +1,6 @@
 # Tracktor add-on
 
-## 1.4.0
+## 1.4.1
 
 ## What's Changed
 * Update Finnish translations for 1.3.x by @pHamala in https://github.com/javedh-dev/tracktor/pull/196
@@ -17,4 +17,4 @@
 
 **Full Changelog**: https://github.com/javedh-dev/tracktor/compare/1.3.1...1.4.0
 
-[View on GitHub](https://github.com/javedh-dev/tracktor/releases/tag/1.4.0)
+[View on GitHub](https://github.com/javedh-dev/tracktor/releases/tag/1.4.1)
