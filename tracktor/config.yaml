@@ -6,33 +6,29 @@ url: "https://github.com/javedh-dev/tracktor"
 # HA’s panel shows the local CHANGELOG.md, which our workflow writes.
 # Keeping this URL is fine, but HA won’t use it for the panel.
 changelog: "https://github.com/javedh-dev/tracktor/releases/tag/v{version}"
+startup: services
+boot: auto
+init: false
+
+ingress: true
+ingress_port: 3000
+
+panel_icon: mdi:car
 
 arch:
   - amd64
   - aarch64
 
-stage: "stable"
-startup: "application"
-init: false
-panel_icon: "mdi:car"
-ingress: false
-
-webui: "http://[HOST]:[PORT:3000]/"
 ports:
-  "3000/tcp": 5175
-ports_description:
-  "3000/tcp": "Tracktor Web UI (host port editable)"
+  3000/tcp: 3000
 
 map:
-  - type: data
-    read_only: false
+  - config:rw
+  - share:rw
+  - addons:rw
+  - media:rw
 
-options:
-  TZ: "Europe/Vilnius"
-  PIN: ""          # set 4–12 digits to require a PIN; leave empty to disable
-  PORT: 3000       # container-side port; Tracktor listens here
+options: {}
+schema: {}
 
-schema:
-  TZ: str
-  PIN: str?
-  PORT: int
+image: "local/tracktor-addon"
