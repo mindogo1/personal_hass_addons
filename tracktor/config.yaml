@@ -30,5 +30,3 @@ map:
 
 options: {}
 schema: {}
-
-image: "local/tracktor-addon"
