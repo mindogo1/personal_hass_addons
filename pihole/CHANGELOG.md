@@ -1,26 +1,29 @@
 # Pi-hole add-on
 
-## v6.4.2
+## v6.4.3
 
-<!-- Release notes generated using configuration in .github/release.yml at development -->
+<!-- Release notes generated using configuration in .github/release.yml at master -->
 
 ## What's Changed
-* Wipe version file before creating a new one by @yubiuser in https://github.com/pi-hole/pi-hole/pull/6538
-* Fix ownership permissions for containing directories in fix_owner_per… by @PromoFaux in https://github.com/pi-hole/pi-hole/pull/6589
-* Remove reference to /usr/local/bin/COL_TABLE by @darkexplosiveqwx in https://github.com/pi-hole/pi-hole/pull/6594
-* Skip apt cache update when pihole-meta is current by @PromoFaux in https://github.com/pi-hole/pi-hole/pull/6581
-* Set versions in /etc/pihole/versions to null if script fails by @yubiuser in https://github.com/pi-hole/pi-hole/pull/6550
-* Remove redundant touching of logfiles from systemd Service by @yubiuser in https://github.com/pi-hole/pi-hole/pull/6601
-* Loosen requirements for local file access for gravity by @yubiuser in https://github.com/pi-hole/pi-hole/pull/6430
-* Fix permission for *.etag files after gravity run by @yubiuser in https://github.com/pi-hole/pi-hole/pull/6353
-* add logrotate to DEB and RPM dependencies by @darkexplosiveqwx in https://github.com/pi-hole/pi-hole/pull/6524
-* Improve gravity error message including curl exit code and errormsg by @rdwebdesign in https://github.com/pi-hole/pi-hole/pull/6605
+* Also hardcode the PID file location in utils.sh to prevent `readonly  variable` warning by @PromoFaux in https://github.com/pi-hole/pi-hole/pull/6613
+* Use `awk` to compare curl versions by @rdwebdesign in https://github.com/pi-hole/pi-hole/pull/6621
+* Explicitly add `gawk` to APK dependencies by @yubiuser in https://github.com/pi-hole/pi-hole/pull/6622
+* Prevent double error message output in gravity run with invalid file by @PromoFaux in https://github.com/pi-hole/pi-hole/pull/6607
+* Replace pytest/tox with direct in-container BATS by @PromoFaux in https://github.com/pi-hole/pi-hole/pull/6598
+* Add Fedora 44 and Ubuntu 26.04 LTS to tests by @darkexplosiveqwx in https://github.com/pi-hole/pi-hole/pull/6623
+* Add gravity tests by @yubiuser in https://github.com/pi-hole/pi-hole/pull/6639
+* Set BATS pretty output flag depending on the terminal and improve failure output by @yubiuser in https://github.com/pi-hole/pi-hole/pull/6644
+* fix: check return codes in gravity_build_tree and database_recovery() by @jluzzi123 in https://github.com/pi-hole/pi-hole/pull/6630
+* Include alpine 3.24 in tests by @yubiuser in https://github.com/pi-hole/pi-hole/pull/6654
+* installer: fix custom DNS entry when only one upstream server is provided by @Gilmoursa in https://github.com/pi-hole/pi-hole/pull/6638
+* Fix BATS gravity test on curl version >=8.21 by @yubiuser in https://github.com/pi-hole/pi-hole/pull/6661
+* avoid copytruncate in logrotate by @darkexplosiveqwx in https://github.com/pi-hole/pi-hole/pull/6642
+* v6.4.3 by @PromoFaux in https://github.com/pi-hole/pi-hole/pull/6618
 
-## Security advisories
-* https://github.com/pi-hole/pi-hole/security/advisories/GHSA-6w8x-p785-6pm4
-  *  Fixed with : https://github.com/pi-hole/pi-hole/commit/7ccb8ddfb085479fa96e801886eb1cdbeaf3a720 and https://github.com/pi-hole/FTL/commit/88c569aa026d905d0066135bb71f36a13acf4bf4
+## New Contributors
+* @jluzzi123 made their first contribution in https://github.com/pi-hole/pi-hole/pull/6630
+* @Gilmoursa made their first contribution in https://github.com/pi-hole/pi-hole/pull/6638
 
+**Full Changelog**: https://github.com/pi-hole/pi-hole/compare/v6.4.2...v6.4.3
 
-**Full Changelog**: https://github.com/pi-hole/pi-hole/compare/v6.4.1...v6.4.2
-
-[View on GitHub](https://github.com/pi-hole/pi-hole/releases/tag/v6.4.2)
+[View on GitHub](https://github.com/pi-hole/pi-hole/releases/tag/v6.4.3)
