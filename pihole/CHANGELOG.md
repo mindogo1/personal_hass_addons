@@ -4,6 +4,10 @@
 
 <!-- Release notes generated using configuration in .github/release.yml at master -->
 
+## Security Fixes
+
+- [pi-hole/pi-hole/security/advisories/GHSA-h8w9-qx2v-wrww](https://github.com/pi-hole/pi-hole/security/advisories/GHSA-h8w9-qx2v-wrww) — Local privilege escalation from pihole user to root via /etc/pihole/logrotate (High) reported by [supperhellokitty20](https://github.com/supperhellokitty20)
+
 ## What's Changed
 * Also hardcode the PID file location in utils.sh to prevent `readonly  variable` warning by @PromoFaux in https://github.com/pi-hole/pi-hole/pull/6613
 * Use `awk` to compare curl versions by @rdwebdesign in https://github.com/pi-hole/pi-hole/pull/6621
