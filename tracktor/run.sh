@@ -33,6 +33,13 @@ fi
 export DB_PATH="$DB_FILE"
 export NODE_ENV="production"
 
+export BODY_SIZE_LIMIT="50M"
+if [ -f /data/options.json ]; then
+  VAL=$(jq -r '.body_size_limit // empty' /data/options.json)
+  [ -n "$VAL" ] && export BODY_SIZE_LIMIT="$VAL"
+fi
+
+
 cd "$APP_ROOT"
 
 echo "[tracktor-addon] Starting Tracktor"

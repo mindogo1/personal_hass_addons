@@ -28,5 +28,7 @@ map:
   - addons:rw
   - media:rw
 
-options: {}
-schema: {}
+options:
+  body_size_limit: "50M"
+schema:
+  body_size_limit: "str?"
