@@ -1,6 +1,6 @@
 # Tracktor add-on
 
-## 2.0.2
+## 2.1.0
 
 ## Highlights
 
@@ -27,4 +27,4 @@
 
 **Full Changelog**: https://github.com/javedh-dev/tracktor/compare/1.4.1...2.0.0
 
-[View on GitHub](https://github.com/javedh-dev/tracktor/releases/tag/2.0.2)
+[View on GitHub](https://github.com/javedh-dev/tracktor/releases/tag/2.1.0)
